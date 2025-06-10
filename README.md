@@ -1,6 +1,6 @@
-# MedStoreHandler
+# Medistry
 
-Monorepo for MedStoreHandler v1
+Monorepo for Medistry v1
 
 - `/backend`: Node.js + Express + TypeScript + TypeORM
 - `/frontend`: React + Vite + TypeScript + Tailwind CSS

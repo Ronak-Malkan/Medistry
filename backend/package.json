@@ -1,15 +1,16 @@
 {
-  "name": "medstore-backend",
+  "name": "medistry-backend",
   "version": "0.1.0",
   "private": true,
   "scripts": {
     "dev": "ts-node-dev --respawn src/index.ts",
     "build": "tsc",
-    "lint": "eslint 'src/**/*.{ts,js}'",
+    "lint": "eslint \"src/**/*.{ts,js}\"",
     "test": "jest --passWithNoTests"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
+    "cors": "^2.8.5",
     "express": "^4.18.2",
     "express-jwt": "^7.7.8",
     "jsonwebtoken": "^9.0.0",
@@ -19,9 +20,11 @@
   },
   "devDependencies": {
     "@types/bcryptjs": "^2.4.2",
+    "@types/cors": "^2.8.12",
     "@types/express": "^4.17.17",
     "@types/jest": "^29.5.2",
     "@types/jsonwebtoken": "^9.0.2",
+    "@types/supertest": "^6.0.3",
     "@typescript-eslint/eslint-plugin": "^8.34.0",
     "@typescript-eslint/parser": "^8.34.0",
     "eslint": "^8.39.0",
