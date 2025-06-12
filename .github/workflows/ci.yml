@@ -10,18 +10,48 @@ jobs:
   lint-and-test-backend:
     name: Backend Lint & Test
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: backend
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: medistry_dev
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      # Points at the service container on localhost
+      DATABASE_URL: postgres://postgres:postgres@localhost:5432/medistry_dev
+      # Required by your auth middleware in CI
+      JWT_SECRET: testsecret123
+
     steps:
-      - uses: actions/checkout@v3
-      - name: Use Node.js
-        uses: actions/setup-node@v4
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
         with:
-          node-version: "18"
+          node-version: 18
+
       - name: Install dependencies
         run: npm ci
-      - name: Run ESLint
+        working-directory: backend
+
+      - name: Lint
         run: npm run lint
-      - name: Run Tests
+        working-directory: backend
+
+      - name: Build
+        run: npm run build
+        working-directory: backend
+
+      - name: Run tests
         run: npm test
+        working-directory: backend
