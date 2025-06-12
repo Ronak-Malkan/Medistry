@@ -1,7 +1,6 @@
-version: "3.8"
 services:
   postgres:
-    image: postgres:15
+    image: postgres
     restart: always
     environment:
       POSTGRES_USER: postgres
@@ -13,8 +12,9 @@ services:
       - "5432:5432"
 
   backend:
-    build: ./backend
-    command: npm run dev
+    build:
+      context: ./backend
+      target: development
     working_dir: /usr/src/app
     volumes:
       - ./backend:/usr/src/app

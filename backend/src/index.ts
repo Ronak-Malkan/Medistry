@@ -1,21 +1,19 @@
-import 'reflect-metadata';
-import express from 'express';
-import cors from 'cors';
+import { app } from './app';
+import { AppDataSource } from './data-source';
+import 'dotenv/config';
 
-const app = express();
+async function startServer() {
+  try {
+    console.log(process.env.DATABASE_URL);
+    await AppDataSource.initialize();
+    // eslint-disable-next-line no-console
+    console.log('Data Source has been initialized.');
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error('Error during Data Source initialization:', err);
+    process.exit(1);
+  }
 
-// Enable CORS for all origins (adjust in prod as needed)
-app.use(cors());
-// Parse JSON bodies
-app.use(express.json());
-
-// Health-check endpoint
-app.get('/health', (_req, res) => {
-  res.status(200).json({ status: 'ok' });
-});
-
-// If this module is run directly, start the server
-if (require.main === module) {
   const port = process.env.PORT || 4000;
   app.listen(port, () => {
     // eslint-disable-next-line no-console
@@ -23,4 +21,7 @@ if (require.main === module) {
   });
 }
 
-export default app;
+// Only start the DB and server if this file is run directly
+if (require.main === module) {
+  startServer();
+}
