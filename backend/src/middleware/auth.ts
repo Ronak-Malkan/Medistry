@@ -1,42 +1,31 @@
-// backend/src/middleware/auth.ts
-
-import { Request, Response, NextFunction } from 'express';
-import { expressjwt, Request as JWTRequest } from 'express-jwt';
+import { Request, RequestHandler } from 'express';
+import { expressjwt } from 'express-jwt';
 
 const jwtSecret = process.env.JWT_SECRET;
 
-// If no JWT_SECRET is provided (e.g. in CI/test), skip JWT verification
-export const jwtMiddleware: (
-  req: Request,
-  res: Response,
-  next: NextFunction,
-) => void = jwtSecret
+// Skip JWT in tests if no secret
+export const jwtMiddleware: RequestHandler = jwtSecret
   ? expressjwt({
       secret: jwtSecret,
       algorithms: ['HS256'],
       credentialsRequired: true,
     })
-  : (_req, _res, next) => {
-      next();
-    };
+  : (_req, _res, next) => next();
 
-// Extend the JWTRequest so TS knows req.auth exists
-interface AuthenticatedRequest extends JWTRequest {
-  auth: {
-    role: string;
-    [key: string]: unknown;
-  };
+// Extend Request to include the JWT payload
+interface ReqWithAuth extends Request {
+  auth: { accountId: number; role: string; [key: string]: unknown };
 }
 
 /**
- * Checks that req.auth.role is one of the allowedRoles.
+ * Guard routes by allowedRoles.
  */
-export function requireRole(...allowedRoles: string[]) {
-  return (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
-    const { role } = req.auth;
-    if (!allowedRoles.includes(role)) {
+export const requireRole = (...allowedRoles: string[]): RequestHandler => {
+  return (req, res, next) => {
+    const auth = (req as ReqWithAuth).auth;
+    if (!auth?.role || !allowedRoles.includes(auth.role)) {
       return res.status(403).json({ message: 'Forbidden' });
     }
     next();
   };
-}
+};

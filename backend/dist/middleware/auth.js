@@ -1,29 +1,26 @@
 "use strict";
-// backend/src/middleware/auth.ts
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.jwtMiddleware = void 0;
-exports.requireRole = requireRole;
+exports.requireRole = exports.jwtMiddleware = void 0;
 const express_jwt_1 = require("express-jwt");
 const jwtSecret = process.env.JWT_SECRET;
-// If no JWT_SECRET is provided (e.g. in CI/test), skip JWT verification
+// Skip JWT in tests if no secret
 exports.jwtMiddleware = jwtSecret
     ? (0, express_jwt_1.expressjwt)({
         secret: jwtSecret,
         algorithms: ['HS256'],
         credentialsRequired: true,
     })
-    : (_req, _res, next) => {
-        next();
-    };
+    : (_req, _res, next) => next();
 /**
- * Checks that req.auth.role is one of the allowedRoles.
+ * Guard routes by allowedRoles.
  */
-function requireRole(...allowedRoles) {
+const requireRole = (...allowedRoles) => {
     return (req, res, next) => {
-        const { role } = req.auth;
-        if (!allowedRoles.includes(role)) {
+        const auth = req.auth;
+        if (!auth?.role || !allowedRoles.includes(auth.role)) {
             return res.status(403).json({ message: 'Forbidden' });
         }
         next();
     };
-}
+};
+exports.requireRole = requireRole;

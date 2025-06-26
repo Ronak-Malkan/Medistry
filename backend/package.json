@@ -6,7 +6,7 @@
     "dev": "ts-node-dev --respawn src/index.ts",
     "build": "tsc",
     "lint": "eslint \"src/**/*.{ts,js}\"",
-    "test": "jest --passWithNoTests"
+    "test": "jest --runInBand --passWithNoTests"
   },
   "dependencies": {
     "bcryptjs": "^2.4.3",
