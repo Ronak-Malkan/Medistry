@@ -5,6 +5,8 @@ import cors from 'cors';
 import authRouter from './controllers/authController';
 import accountRouter from './controllers/accountController';
 import userRouter from './controllers/userController';
+import contentRouter from './controllers/contentController';
+import medicineRouter from './controllers/medicineController';
 import { jwtMiddleware } from './middleware/auth';
 
 export const app = express();
@@ -20,3 +22,5 @@ app.use('/auth', authRouter);
 app.use('/api', jwtMiddleware);
 app.use('/api/accounts', accountRouter);
 app.use('/api/users', userRouter);
+app.use('/api/contents', contentRouter);
+app.use('/api/medicines', medicineRouter);

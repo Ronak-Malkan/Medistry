@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 const app_1 = require("./app");
+const alertCron_1 = require("./cron/alertCron");
 const data_source_1 = require("./data-source");
 require("dotenv/config");
 async function startServer() {
@@ -20,6 +21,8 @@ async function startServer() {
         // eslint-disable-next-line no-console
         console.log(`Server listening on port ${port}`);
     });
+    // Kick off scheduled alert jobs
+    (0, alertCron_1.startAlertCronJobs)();
 }
 // Only start the DB and server if this file is run directly
 if (require.main === module) {

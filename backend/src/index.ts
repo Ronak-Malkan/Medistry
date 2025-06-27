@@ -1,4 +1,5 @@
 import { app } from './app';
+import { startAlertCronJobs } from './cron/alertCron';
 import { AppDataSource } from './data-source';
 import 'dotenv/config';
 
@@ -19,6 +20,8 @@ async function startServer() {
     // eslint-disable-next-line no-console
     console.log(`Server listening on port ${port}`);
   });
+  // Kick off scheduled alert jobs
+  startAlertCronJobs();
 }
 
 // Only start the DB and server if this file is run directly
