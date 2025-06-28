@@ -3,6 +3,12 @@ node_modules/
 npm-debug.log
 yarn-debug.log
 yarn-error.log
+# ignore all node_modules in the monorepo
+**/node_modules/
+
+# ignore build output
+**/dist/
+
 
 # VSCode
 .vscode/
