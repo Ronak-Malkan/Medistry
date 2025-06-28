@@ -1,6 +1,6 @@
 import { medicineRepository } from '../repositories/medicineRepository';
 import { Medicine } from '../entities/Medicine';
-import { ILike } from 'typeorm';
+import { ILike, FindOptionsWhere } from 'typeorm';
 
 export interface MedicineDTO {
   name: string;
@@ -21,7 +21,7 @@ export async function listMedicines(
   accountId: number,
   q?: string,
 ): Promise<Medicine[]> {
-  const where: any = { accountId };
+  const where: FindOptionsWhere<Medicine> = { accountId };
   if (q) where.name = ILike(`%${q}%`);
   return medicineRepository.find({ where });
 }
