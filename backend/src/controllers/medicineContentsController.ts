@@ -2,10 +2,6 @@ import { Router, Request, Response } from 'express';
 import { MedicineContentsService } from '../services/medicineContentsService';
 import { requireRole } from '../middleware/auth';
 
-interface AuthRequest extends Request {
-  auth: { accountId: number; role: string; userId: number };
-}
-
 const router = Router();
 const medicineContentsService = new MedicineContentsService();
 

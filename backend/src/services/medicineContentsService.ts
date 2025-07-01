@@ -1,5 +1,4 @@
 import { medicineContentsRepository } from '../repositories/medicineContentsRepository';
-import { MedicineContents } from '../entities/MedicineContents';
 
 export class MedicineContentsService {
   async add(medicine_id: number, content_id: number) {
