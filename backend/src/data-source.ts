@@ -5,13 +5,32 @@ import { Account } from './entities/Account';
 import { User } from './entities/User';
 import { Medicine } from './entities/Medicine';
 import { Content } from './entities/Content';
+import { Provider } from './entities/Provider';
+import { IncomingBill } from './entities/IncomingBill';
+import { IncomingStock } from './entities/IncomingStock';
+import { Patient } from './entities/Patient';
+import { Bill } from './entities/Bill';
+import { SellingLog } from './entities/SellingLog';
+import { MedicineContents } from './entities/MedicineContents';
 
 export const AppDataSource = new DataSource({
   type: 'postgres',
   url: process.env.DATABASE_URL,
   synchronize: true,
   logging: false,
-  entities: [Account, User, Medicine, Content],
+  entities: [
+    Account,
+    User,
+    Medicine,
+    Content,
+    Provider,
+    IncomingBill,
+    IncomingStock,
+    Patient,
+    Bill,
+    SellingLog,
+    MedicineContents,
+  ],
   migrations: [],
   subscribers: [],
 });
