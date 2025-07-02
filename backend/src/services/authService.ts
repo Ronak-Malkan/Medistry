@@ -27,37 +27,15 @@ interface AdminInput {
 
 export async function registerCompany(
   companyData: CompanyInput,
-  adminData: AdminInput,
-): Promise<string> {
+): Promise<Account> {
   const account = accountRepository.create(companyData as Partial<Account>);
   const savedAccount = await accountRepository.save(account);
-
-  const passwordHash = await bcrypt.hash(adminData.password, 10);
-  const user = userRepository.create({
-    username: adminData.username,
-    passwordHash,
-    fullName: adminData.fullName,
-    email: adminData.email,
-    role: 'account_admin' as UserRole,
-    accountId: savedAccount.accountId,
-  });
-  const savedUser = await userRepository.save(user);
-
-  return jwt.sign(
-    {
-      userId: savedUser.userId,
-      accountId: savedAccount.accountId,
-      role: savedUser.role,
-    },
-    JWT_SECRET,
-    { expiresIn: TOKEN_EXPIRY },
-  );
+  return savedAccount;
 }
 
 export async function loginUser(
   username: string,
   password: string,
-  loginAs: 'company' | 'user',
 ): Promise<string> {
   const user = await userRepository.findOneBy({ username });
   if (!user) {
@@ -67,13 +45,6 @@ export async function loginUser(
   const valid = await bcrypt.compare(password, user.passwordHash);
   if (!valid) {
     throw new Error('Invalid credentials');
-  }
-
-  if (loginAs === 'company' && user.role !== 'account_admin') {
-    throw new Error('Must be account admin to log in as company');
-  }
-  if (loginAs === 'user' && user.role !== 'app_admin') {
-    throw new Error('Must be app admin to log in as user');
   }
 
   return jwt.sign(

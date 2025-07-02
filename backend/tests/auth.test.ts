@@ -32,22 +32,24 @@ afterAll(async () => {
 });
 
 describe('Auth Endpoints Integration', () => {
+  const adminCredentials = {
+    username: 'adminuser',
+    password: 'securepassword',
+    fullName: 'Admin User',
+    email: 'admin@email.com',
+  };
+
   const companyPayload = {
     company: {
-      name: 'TestCo',
-      drugLicenseNumber: 'DL123',
+      name: 'Test Pharmacy',
+      drugLicenseNumber: 'DL123456',
       address: '123 Main St',
-      contactEmail: 'contact@test.co',
+      contactEmail: 'pharmacy@email.com',
       contactPhone: '1234567890',
       lowStockThreshold: 5,
-      expiryAlertLeadTime: 10,
+      expiryAlertLeadTime: 30,
     },
-    admin: {
-      username: 'alice',
-      password: 'Secret123!',
-      fullName: 'Alice Smith',
-      email: 'alice@test.co',
-    },
+    admin: adminCredentials,
   };
 
   let jwtToken: string;
@@ -55,8 +57,7 @@ describe('Auth Endpoints Integration', () => {
   it('POST /auth/company/register → should return 201 and a JWT', async () => {
     const res = await request(app)
       .post('/auth/company/register')
-      .send(companyPayload)
-      .set('Accept', 'application/json');
+      .send(companyPayload);
     expect(res.status).toBe(201);
     expect(res.body.token).toBeDefined();
     jwtToken = res.body.token;
@@ -68,8 +69,8 @@ describe('Auth Endpoints Integration', () => {
 
   it('POST /auth/login → loginAs company_admin succeeds', async () => {
     const res = await request(app).post('/auth/login').send({
-      username: companyPayload.admin.username,
-      password: companyPayload.admin.password,
+      username: adminCredentials.username,
+      password: adminCredentials.password,
       loginAs: 'company',
     });
     expect(res.status).toBe(200);
@@ -78,10 +79,10 @@ describe('Auth Endpoints Integration', () => {
     expect(decoded.role).toBe('account_admin');
   });
 
-  it('POST /auth/login → wrong loginAs “user” is forbidden', async () => {
+  it('POST /auth/login → wrong loginAs "user" is forbidden', async () => {
     const res = await request(app).post('/auth/login').send({
-      username: companyPayload.admin.username,
-      password: companyPayload.admin.password,
+      username: adminCredentials.username,
+      password: adminCredentials.password,
       loginAs: 'user',
     });
     expect(res.status).toBe(401);
@@ -89,7 +90,7 @@ describe('Auth Endpoints Integration', () => {
 
   it('POST /auth/login → wrong password is rejected', async () => {
     const res = await request(app).post('/auth/login').send({
-      username: companyPayload.admin.username,
+      username: adminCredentials.username,
       password: 'BadPassword!',
       loginAs: 'company',
     });
