@@ -7,6 +7,10 @@ import jwt from 'jsonwebtoken';
 
 const router = Router();
 
+interface ReqWithAuth extends Request {
+  auth: { userId: number; accountId: number; role: string };
+}
+
 router.post('/company/register', async (req, res) => {
   try {
     // Step 1: Create company
@@ -48,14 +52,10 @@ router.post('/login', async (req, res) => {
 
 // GET /auth/me - return user info if JWT is valid
 router.get('/me', jwtMiddleware, (req: Request, res: Response) => {
-  // req.auth is set by the JWT middleware
   if (!('auth' in req)) {
     return res.status(401).json({ message: 'Unauthorized' });
   }
-  // Return the JWT payload (userId, accountId, role)
-  // You can expand this to fetch more user info if needed
-  // (req as any).auth is used for type safety
-  return res.json({ user: (req as any).auth });
+  return res.json({ user: (req as ReqWithAuth).auth });
 });
 
 export default router;

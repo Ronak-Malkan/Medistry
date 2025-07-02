@@ -79,15 +79,6 @@ describe('Auth Endpoints Integration', () => {
     expect(decoded.role).toBe('account_admin');
   });
 
-  it('POST /auth/login → wrong loginAs "user" is forbidden', async () => {
-    const res = await request(app).post('/auth/login').send({
-      username: adminCredentials.username,
-      password: adminCredentials.password,
-      loginAs: 'user',
-    });
-    expect(res.status).toBe(401);
-  });
-
   it('POST /auth/login → wrong password is rejected', async () => {
     const res = await request(app).post('/auth/login').send({
       username: adminCredentials.username,

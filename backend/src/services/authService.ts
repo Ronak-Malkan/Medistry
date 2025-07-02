@@ -3,7 +3,6 @@ import jwt from 'jsonwebtoken';
 import { accountRepository } from '../repositories/accountRepository';
 import { userRepository } from '../repositories/userRepository';
 import { Account } from '../entities/Account';
-import type { UserRole } from '../entities/User';
 
 const JWT_SECRET = process.env.JWT_SECRET!;
 const TOKEN_EXPIRY = '8h';
@@ -16,13 +15,6 @@ interface CompanyInput {
   contactPhone: string;
   lowStockThreshold?: number;
   expiryAlertLeadTime?: number;
-}
-
-interface AdminInput {
-  username: string;
-  password: string;
-  fullName: string;
-  email: string;
 }
 
 export async function registerCompany(
