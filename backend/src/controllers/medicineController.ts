@@ -5,6 +5,9 @@ import {
   updateMedicine,
   deleteMedicine,
   MedicineDTO,
+  getMedicineStats,
+  getLowStockCount,
+  getExpiringSoonCount,
 } from '../services/medicineService';
 import { requireRole } from '../middleware/auth';
 import { logger } from '../utils/logger';
@@ -80,6 +83,54 @@ router.delete(
     } catch (e) {
       logger.error('Delete medicine failed', { error: e });
       res.status(400).json({ message: (e as Error).message });
+    }
+  },
+);
+
+// GET /api/medicines/stats
+router.get(
+  '/stats',
+  requireRole('app_admin'),
+  async (req: Request, res: Response) => {
+    try {
+      const accountId = (req as ReqWithAuth).auth.accountId;
+      const count = await getMedicineStats(accountId);
+      res.json({ count });
+    } catch (e) {
+      logger.error('Get medicine stats failed', { error: e });
+      res.status(500).json({ message: (e as Error).message });
+    }
+  },
+);
+
+// GET /api/medicines/low-stock
+router.get(
+  '/low-stock',
+  requireRole('app_admin'),
+  async (req: Request, res: Response) => {
+    try {
+      const accountId = (req as ReqWithAuth).auth.accountId;
+      const count = await getLowStockCount(accountId);
+      res.json({ count });
+    } catch (e) {
+      logger.error('Get low stock count failed', { error: e });
+      res.status(500).json({ message: (e as Error).message });
+    }
+  },
+);
+
+// GET /api/medicines/expiring-soon
+router.get(
+  '/expiring-soon',
+  requireRole('app_admin'),
+  async (req: Request, res: Response) => {
+    try {
+      const accountId = (req as ReqWithAuth).auth.accountId;
+      const count = await getExpiringSoonCount(accountId);
+      res.json({ count });
+    } catch (e) {
+      logger.error('Get expiring soon count failed', { error: e });
+      res.status(500).json({ message: (e as Error).message });
     }
   },
 );

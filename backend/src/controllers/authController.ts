@@ -8,7 +8,13 @@ import jwt from 'jsonwebtoken';
 const router = Router();
 
 interface ReqWithAuth extends Request {
-  auth: { userId: number; accountId: number; role: string };
+  auth: {
+    userId: number;
+    accountId: number;
+    role: string;
+    username?: string;
+    fullName?: string;
+  };
 }
 
 router.post('/company/register', async (req, res) => {
@@ -26,6 +32,8 @@ router.post('/company/register', async (req, res) => {
         userId: adminUser.userId,
         accountId: savedAccount.accountId,
         role: adminUser.role,
+        username: adminUser.username,
+        fullName: adminUser.fullName,
       },
       process.env.JWT_SECRET!,
       { expiresIn: '8h' },
@@ -55,7 +63,10 @@ router.get('/me', jwtMiddleware, (req: Request, res: Response) => {
   if (!('auth' in req)) {
     return res.status(401).json({ message: 'Unauthorized' });
   }
-  return res.json({ user: (req as ReqWithAuth).auth });
+  // Add username and fullName to the user object if present in JWT
+  const auth = (req as ReqWithAuth).auth;
+  const { userId, accountId, role, username, fullName } = auth;
+  return res.json({ user: { userId, accountId, role, username, fullName } });
 });
 
 export default router;

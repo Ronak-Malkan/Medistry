@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { useAuth } from "../context/AuthContext";
+import Navigation from "../components/Navigation";
 
 const ROLE_INFO = {
   account_admin: "Full access to account settings, users, and data.",
@@ -36,6 +37,12 @@ export default function AccountsPage() {
   });
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [editing, setEditing] = useState(false);
+  const [companyEdit, setCompanyEdit] = useState<any>(null);
+  const [companyLoading, setCompanyLoading] = useState(false);
+  const [companyError, setCompanyError] = useState<string | null>(null);
+  const [companySuccess, setCompanySuccess] = useState<string | null>(null);
+  console.log("AccountsPage");
 
   useEffect(() => {
     if (!user) return;
@@ -54,6 +61,10 @@ export default function AccountsPage() {
       .then((res) => res.json())
       .then((data) => setUsers(data.users || []));
   }, [user]);
+
+  useEffect(() => {
+    if (company) setCompanyEdit(company);
+  }, [company]);
 
   async function handleAddUser(e: React.FormEvent) {
     e.preventDefault();
@@ -90,8 +101,33 @@ export default function AccountsPage() {
     }
   }
 
+  async function handleCompanySave() {
+    setCompanyLoading(true);
+    setCompanyError(null);
+    setCompanySuccess(null);
+    try {
+      const res = await fetch("/api/accounts", {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${localStorage.getItem("medistry_jwt")}`,
+        },
+        body: JSON.stringify(companyEdit),
+      });
+      if (!res.ok) throw new Error((await res.json()).message || "Failed");
+      const updated = await res.json();
+      setCompany(updated);
+      setEditing(false);
+      setCompanySuccess("Account info updated!");
+    } catch (err: any) {
+      setCompanyError(err.message || "Failed");
+    } finally {
+      setCompanyLoading(false);
+    }
+  }
+
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen w-full bg-white sm:bg-gradient-to-br sm:from-teal-50 sm:via-blue-50 sm:to-green-100">
       <Header onLogout={logout} />
       <main className="flex justify-center px-2 sm:px-4">
         <div
@@ -114,39 +150,184 @@ export default function AccountsPage() {
               Account Settings
             </h1>
             {company && (
-              <div className="mb-8 grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <div>
-                    <span className="font-medium">Name:</span> {company.name}
+              <>
+                <div className="mb-2 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="flex flex-col mb-3">
+                    <span className="font-medium mb-1">Name:</span>
+                    <input
+                      className="border rounded px-2 py-1 bg-gray-50"
+                      value={companyEdit?.name || ""}
+                      onChange={
+                        editing
+                          ? (e) =>
+                              setCompanyEdit({
+                                ...companyEdit,
+                                name: e.target.value,
+                              })
+                          : undefined
+                      }
+                      disabled={!editing || companyLoading}
+                      readOnly={!editing}
+                    />
                   </div>
-                  <div>
-                    <span className="font-medium">Address:</span>{" "}
-                    {company.address}
+                  <div className="flex flex-col mb-3">
+                    <span className="font-medium mb-1">License:</span>
+                    <input
+                      className="border rounded px-2 py-1 bg-gray-50"
+                      value={companyEdit?.drugLicenseNumber || ""}
+                      onChange={
+                        editing
+                          ? (e) =>
+                              setCompanyEdit({
+                                ...companyEdit,
+                                drugLicenseNumber: e.target.value,
+                              })
+                          : undefined
+                      }
+                      disabled={!editing || companyLoading}
+                      readOnly={!editing}
+                    />
                   </div>
-                  <div>
-                    <span className="font-medium">Contact Phone:</span>{" "}
-                    {company.contactPhone}
+                  <div className="flex flex-col mb-3">
+                    <span className="font-medium mb-1">Address:</span>
+                    <input
+                      className="border rounded px-2 py-1 bg-gray-50"
+                      value={companyEdit?.address || ""}
+                      onChange={
+                        editing
+                          ? (e) =>
+                              setCompanyEdit({
+                                ...companyEdit,
+                                address: e.target.value,
+                              })
+                          : undefined
+                      }
+                      disabled={!editing || companyLoading}
+                      readOnly={!editing}
+                    />
                   </div>
-                  <div>
-                    <span className="font-medium">Expiry Alert Lead Time:</span>{" "}
-                    {company.expiryAlertLeadTime}
+                  <div className="flex flex-col mb-3">
+                    <span className="font-medium mb-1">Contact Email:</span>
+                    <input
+                      className="border rounded px-2 py-1 bg-gray-50"
+                      value={companyEdit?.contactEmail || ""}
+                      onChange={
+                        editing
+                          ? (e) =>
+                              setCompanyEdit({
+                                ...companyEdit,
+                                contactEmail: e.target.value,
+                              })
+                          : undefined
+                      }
+                      disabled={!editing || companyLoading}
+                      readOnly={!editing}
+                    />
+                  </div>
+                  <div className="flex flex-col mb-3">
+                    <span className="font-medium mb-1">Contact Phone:</span>
+                    <input
+                      className="border rounded px-2 py-1 bg-gray-50"
+                      value={companyEdit?.contactPhone || ""}
+                      onChange={
+                        editing
+                          ? (e) =>
+                              setCompanyEdit({
+                                ...companyEdit,
+                                contactPhone: e.target.value,
+                              })
+                          : undefined
+                      }
+                      disabled={!editing || companyLoading}
+                      readOnly={!editing}
+                    />
+                  </div>
+                  <div className="flex flex-col mb-3">
+                    <span className="font-medium mb-1">
+                      Low Stock Threshold:
+                    </span>
+                    <input
+                      type="number"
+                      className="border rounded px-2 py-1 bg-gray-50 w-24"
+                      value={companyEdit?.lowStockThreshold || ""}
+                      onChange={
+                        editing
+                          ? (e) =>
+                              setCompanyEdit({
+                                ...companyEdit,
+                                lowStockThreshold: Number(e.target.value),
+                              })
+                          : undefined
+                      }
+                      disabled={!editing || companyLoading}
+                      readOnly={!editing}
+                    />
+                  </div>
+                  <div className="flex flex-col mb-3">
+                    <span className="font-medium mb-1">
+                      Expiry Alert Lead Time:
+                    </span>
+                    <input
+                      type="number"
+                      className="border rounded px-2 py-1 bg-gray-50 w-24"
+                      value={companyEdit?.expiryAlertLeadTime || ""}
+                      onChange={
+                        editing
+                          ? (e) =>
+                              setCompanyEdit({
+                                ...companyEdit,
+                                expiryAlertLeadTime: Number(e.target.value),
+                              })
+                          : undefined
+                      }
+                      disabled={!editing || companyLoading}
+                      readOnly={!editing}
+                    />
                   </div>
                 </div>
-                <div>
-                  <div>
-                    <span className="font-medium">License:</span>{" "}
-                    {company.drugLicenseNumber}
-                  </div>
-                  <div>
-                    <span className="font-medium">Contact Email:</span>{" "}
-                    {company.contactEmail}
-                  </div>
-                  <div>
-                    <span className="font-medium">Low Stock Threshold:</span>{" "}
-                    {company.lowStockThreshold}
-                  </div>
+                <div className="mb-8 flex gap-2 items-center">
+                  {editing ? (
+                    <>
+                      <button
+                        className="bg-teal-600 text-white px-4 py-1 rounded font-semibold hover:bg-teal-700 transition disabled:opacity-60"
+                        onClick={handleCompanySave}
+                        disabled={companyLoading}
+                      >
+                        {companyLoading ? "Saving..." : "Save"}
+                      </button>
+                      <button
+                        className="bg-gray-200 text-gray-700 px-4 py-1 rounded font-semibold hover:bg-gray-300 transition"
+                        onClick={() => {
+                          setEditing(false);
+                          setCompanyEdit(company);
+                          setCompanyError(null);
+                          setCompanySuccess(null);
+                        }}
+                        disabled={companyLoading}
+                      >
+                        Cancel
+                      </button>
+                      {companyError && (
+                        <span className="text-red-600 ml-4">
+                          {companyError}
+                        </span>
+                      )}
+                      {companySuccess && (
+                        <span className="text-green-700 ml-4">
+                          {companySuccess}
+                        </span>
+                      )}
+                    </>
+                  ) : (
+                    <button
+                      className="bg-teal-600 text-white px-4 py-1 rounded font-semibold hover:bg-teal-700 transition"
+                      onClick={() => setEditing(true)}
+                    >
+                      Edit
+                    </button>
+                  )}
                 </div>
-              </div>
+              </>
             )}
             <div className="mb-8">
               <h2 className="text-lg font-semibold text-teal-800 mb-2 flex items-center">

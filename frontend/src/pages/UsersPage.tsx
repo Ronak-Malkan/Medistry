@@ -1,4 +1,4 @@
 import React from "react";
 export default function UsersPage() {
-  return <div>Users works!</div>;
+  return <div className="min-h-screen w-full">Users works!</div>;
 }

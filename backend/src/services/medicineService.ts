@@ -1,6 +1,7 @@
 import { medicineRepository } from '../repositories/medicineRepository';
 import { Medicine } from '../entities/Medicine';
-import { ILike, FindOptionsWhere } from 'typeorm';
+import { ILike, FindOptionsWhere, LessThan, Between } from 'typeorm';
+import { accountRepository } from '../repositories/accountRepository';
 
 export interface MedicineDTO {
   name: string;
@@ -98,4 +99,31 @@ export async function deleteMedicine(
 ): Promise<void> {
   const res = await medicineRepository.delete({ medicineId, accountId });
   if (res.affected === 0) throw new Error('Medicine not found');
+}
+
+export async function getMedicineStats(accountId: number): Promise<number> {
+  return medicineRepository.count({ where: { accountId } });
+}
+
+export async function getLowStockCount(accountId: number): Promise<number> {
+  const account = await accountRepository.findOneBy({ accountId });
+  if (!account) throw new Error('Account not found');
+  const threshold = account.lowStockThreshold || 0;
+  return medicineRepository.count({
+    where: { accountId, quantityAvailable: LessThan(threshold) },
+  });
+}
+
+export async function getExpiringSoonCount(accountId: number): Promise<number> {
+  const account = await accountRepository.findOneBy({ accountId });
+  if (!account) throw new Error('Account not found');
+  const leadTime = account.expiryAlertLeadTime || 30;
+  const now = new Date();
+  const soon = new Date(now.getTime() + leadTime * 24 * 60 * 60 * 1000);
+  return medicineRepository.count({
+    where: {
+      accountId,
+      expiryDate: Between(now, soon),
+    },
+  });
 }

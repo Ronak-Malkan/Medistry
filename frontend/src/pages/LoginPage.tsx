@@ -7,7 +7,8 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const { login } = useAuth();
+  const [pendingNav, setPendingNav] = useState(false);
+  const { login, user } = useAuth();
   const navigate = useNavigate();
   const usernameRef = useRef<HTMLInputElement>(null);
 
@@ -36,19 +37,29 @@ export default function LoginPage() {
       });
       if (!res.ok) throw new Error("Invalid credentials");
       const { token } = await res.json();
+      console.log("Token", token);
       await login(token);
-      const { role } = parseJwt(token);
-      if (role === "account_admin") {
-        navigate("/accounts");
-      } else {
-        navigate("/dashboard");
-      }
+      console.log("Navigating to accounts");
+      setPendingNav(true);
     } catch (err: any) {
       setError(err.message || "Login failed");
     } finally {
       setLoading(false);
     }
   }
+
+  useEffect(() => {
+    console.log("Pending nav", pendingNav);
+    console.log("User", user);
+    if (pendingNav && user) {
+      if (user.role === "account_admin") {
+        navigate("/accounts");
+      } else {
+        navigate("/dashboard");
+      }
+      setPendingNav(false);
+    }
+  }, [pendingNav, user, navigate]);
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-teal-50 via-blue-50 to-green-100">

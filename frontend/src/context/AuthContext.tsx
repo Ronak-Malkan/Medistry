@@ -10,15 +10,17 @@ interface UserInfo {
   userId: number;
   accountId: number;
   role: string;
+  username?: string;
+  fullName?: string;
 }
 
 interface AuthContextType {
   token: string | null;
   user: UserInfo | null;
   loading: boolean;
-  login: (jwt: string) => Promise<void>;
+  login: (jwt: string) => void;
   logout: () => void;
-  validateToken: () => Promise<boolean>;
+  validateToken: (jwt?: string) => Promise<boolean>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -39,21 +41,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(false);
 
   // Validate token and fetch user info
-  const validateToken = async (): Promise<boolean> => {
-    if (!token) {
+  const validateToken = async (jwt?: string): Promise<boolean> => {
+    const useToken = jwt || token;
+    console.log("Validating token", useToken);
+    if (!useToken) {
+      console.log("No token found");
       setUser(null);
       return false;
     }
     setLoading(true);
     try {
       const res = await fetch("/auth/me", {
-        headers: { Authorization: `Bearer ${token}` },
+        headers: { Authorization: `Bearer ${useToken}` },
       });
       if (!res.ok) throw new Error("Invalid token");
       const data = await res.json();
       setUser(data.user);
+      console.log("Token validated");
       return true;
     } catch {
+      console.log("Invalid token");
       setUser(null);
       setToken(null);
       localStorage.removeItem("medistry_jwt");
@@ -67,7 +74,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const login = async (jwt: string) => {
     setToken(jwt);
     localStorage.setItem("medistry_jwt", jwt);
-    await validateToken();
+    await validateToken(jwt);
   };
 
   // On logout, clear everything

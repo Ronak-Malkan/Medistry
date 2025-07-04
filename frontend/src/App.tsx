@@ -10,6 +10,7 @@ import ContentsPage from "./pages/ContentsPage";
 import MedicinesPage from "./pages/MedicinesPage";
 import LandingPage from "./pages/LandingPage";
 import SignUpPage from "./pages/SignUpPage";
+import ProtectedLayout from "./components/ProtectedLayout";
 
 function ProtectedRoute() {
   const { token, validateToken, loading } = useAuth();
@@ -57,25 +58,85 @@ function ProtectedRoute() {
   return token ? <Outlet /> : null;
 }
 
+function RoleProtectedRoute({
+  allowedRoles,
+  children,
+}: {
+  allowedRoles: string[];
+  children: React.ReactNode;
+}) {
+  const { user, token, loading } = useAuth();
+  if (loading || (token && !user)) {
+    // Still loading user info
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <svg
+          className="animate-spin h-8 w-8 text-blue-600"
+          xmlns="http://www.w3.org/2000/svg"
+          fill="none"
+          viewBox="0 0 24 24"
+        >
+          <circle
+            className="opacity-25"
+            cx="12"
+            cy="12"
+            r="10"
+            stroke="currentColor"
+            strokeWidth="4"
+          />
+          <path
+            className="opacity-75"
+            fill="currentColor"
+            d="M4 12a8 8 0 018-8v8z"
+          />
+        </svg>
+      </div>
+    );
+  }
+  if (!user || !allowedRoles.includes(user.role)) {
+    return <Navigate to="/login" replace />;
+  }
+  return <>{children}</>;
+}
+
 export default function App() {
   return (
-    <Routes>
-      {/* Public */}
-      <Route path="/" element={<LandingPage />} />
-      <Route path="/login" element={<LoginPage />} />
-      <Route path="/signup" element={<SignUpPage />} />
+    <div className="min-h-screen w-full bg-gradient-to-br from-teal-50 via-blue-50 to-green-100">
+      <Routes>
+        {/* Public */}
+        <Route path="/" element={<LandingPage />} />
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/signup" element={<SignUpPage />} />
 
-      {/* Protected */}
-      <Route element={<ProtectedRoute />}>
-        <Route path="/dashboard" element={<DashboardPage />} />
-        <Route path="/accounts" element={<AccountsPage />} />
-        <Route path="/users" element={<UsersPage />} />
-        <Route path="/contents" element={<ContentsPage />} />
-        <Route path="/medicines" element={<MedicinesPage />} />
-      </Route>
+        {/* Protected */}
+        <Route element={<ProtectedRoute />}>
+          <Route
+            path="/accounts"
+            element={
+              <RoleProtectedRoute allowedRoles={["account_admin"]}>
+                <AccountsPage />
+              </RoleProtectedRoute>
+            }
+          />
+          <Route
+            element={
+              <RoleProtectedRoute allowedRoles={["app_admin"]}>
+                <ProtectedLayout>
+                  <Outlet />
+                </ProtectedLayout>
+              </RoleProtectedRoute>
+            }
+          >
+            <Route path="/dashboard" element={<DashboardPage />} />
+            <Route path="/users" element={<UsersPage />} />
+            <Route path="/contents" element={<ContentsPage />} />
+            <Route path="/medicines" element={<MedicinesPage />} />
+          </Route>
+        </Route>
 
-      {/* Fallback */}
-      <Route path="*" element={<Navigate to="/" replace />} />
-    </Routes>
+        {/* Fallback */}
+        <Route path="*" element={<Navigate to="/login" replace />} />
+      </Routes>
+    </div>
   );
 }

@@ -44,6 +44,8 @@ export async function loginUser(
       userId: user.userId,
       accountId: user.accountId,
       role: user.role,
+      username: user.username,
+      fullName: user.fullName,
     },
     JWT_SECRET,
     { expiresIn: TOKEN_EXPIRY },
