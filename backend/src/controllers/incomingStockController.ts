@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import { IncomingStockService } from '../services/incomingStockService';
 import { requireRole } from '../middleware/auth';
+import { logger } from '../utils/logger';
 
 interface AuthRequest extends Request {
   auth: { accountId: number; role: string; userId: number };
@@ -15,28 +16,32 @@ router.post(
   requireRole('app_admin'),
   async (req: Request, res: Response) => {
     try {
+      logger.info('IncomingStockController POST / - body:', req.body);
       const requiredFields = [
-        'incomingBill',
-        'medicine',
-        'batch_number',
-        'incoming_date',
-        'hsn_code',
-        'quantity_received',
-        'unit_cost',
-        'expiry_date',
+        'incomingBillId',
+        'medicineId',
+        'batchNumber',
+        'incomingDate',
+        'hsnCode',
+        'quantityReceived',
+        'unitCost',
+        'expiryDate',
+        'accountId',
       ];
       for (const field of requiredFields) {
         if (req.body[field] === undefined || req.body[field] === null) {
+          logger.error(`Missing required field: ${field}`);
           return res.status(400).json({ error: `${field} is required` });
         }
       }
       const { accountId } = (req as AuthRequest).auth;
-      const stock = await incomingStockService.addOrUpdateStock(
+      const result = await incomingStockService.addOrUpdateStock(
         req.body,
         accountId,
       );
-      res.status(201).json(stock);
+      res.status(201).json(result);
     } catch (err) {
+      logger.error('IncomingStockController POST / error:', err);
       res.status(400).json({ error: (err as Error).message });
     }
   },

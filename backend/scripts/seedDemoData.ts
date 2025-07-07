@@ -1,5 +1,6 @@
 import { AppDataSource } from '../src/data-source';
 import { Medicine } from '../src/entities/Medicine';
+import { MedicineStock } from '../src/entities/MedicineStock';
 import { Content } from '../src/entities/Content';
 import { MedicineContents } from '../src/entities/MedicineContents';
 import { Patient } from '../src/entities/Patient';
@@ -39,111 +40,60 @@ async function seed() {
     contents.push(content);
   }
 
-  // --- Medicines ---
+  // --- Medicines (master) ---
   const medicineRepo = AppDataSource.getRepository(Medicine);
+  const medicineStockRepo = AppDataSource.getRepository(MedicineStock);
   const today = new Date();
-  const medicinesData = [
-    // Expiring soon, low stock
-    {
-      name: 'Crocin 500',
-      hsn: '3004',
-      contentId: contents[0].contentId,
-      batchNumber: 'A1',
-      incomingDate: new Date(today.getFullYear(), today.getMonth() - 2, 1),
-      expiryDate: new Date(
-        today.getFullYear(),
-        today.getMonth(),
-        today.getDate() + 10,
-      ),
-      unitsPerPack: 10,
-      quantityAvailable: 5,
-      price: '20.00',
-      accountId: ACCOUNT_ID,
-    },
-    // High stock, long expiry
-    {
-      name: 'Amoxil 250',
-      hsn: '3003',
-      contentId: contents[1].contentId,
-      batchNumber: 'B2',
-      incomingDate: new Date(today.getFullYear(), today.getMonth() - 1, 10),
-      expiryDate: new Date(today.getFullYear(), today.getMonth() + 12, 1),
-      unitsPerPack: 20,
-      quantityAvailable: 200,
-      price: '120.00',
-      accountId: ACCOUNT_ID,
-    },
-    // Normal stock, expiring in 3 months
-    {
-      name: 'Ibugesic Plus',
-      hsn: '3002',
-      contentId: contents[2].contentId,
-      batchNumber: 'C3',
-      incomingDate: new Date(today.getFullYear(), today.getMonth() - 3, 5),
-      expiryDate: new Date(today.getFullYear(), today.getMonth() + 3, 1),
-      unitsPerPack: 15,
-      quantityAvailable: 50,
-      price: '45.00',
-      accountId: ACCOUNT_ID,
-    },
-    // Expired
-    {
-      name: 'Ciplox 500',
-      hsn: '3005',
-      contentId: contents[3].contentId,
-      batchNumber: 'D4',
-      incomingDate: new Date(today.getFullYear(), today.getMonth() - 12, 1),
-      expiryDate: new Date(today.getFullYear(), today.getMonth() - 1, 1),
-      unitsPerPack: 10,
-      quantityAvailable: 0,
-      price: '80.00',
-      accountId: ACCOUNT_ID,
-    },
-    // High stock, expiring soon
-    {
-      name: 'Cetirizine 10mg',
-      hsn: '3006',
-      contentId: contents[5].contentId,
-      batchNumber: 'E5',
-      incomingDate: new Date(today.getFullYear(), today.getMonth() - 1, 1),
-      expiryDate: new Date(
-        today.getFullYear(),
-        today.getMonth(),
-        today.getDate() + 5,
-      ),
-      unitsPerPack: 30,
-      quantityAvailable: 100,
-      price: '60.00',
-      accountId: ACCOUNT_ID,
-    },
-  ];
-  const medicines: Medicine[] = [];
-  for (const m of medicinesData) {
-    let medicine = await medicineRepo.findOneBy({
-      name: m.name,
-      batchNumber: m.batchNumber,
-      accountId: m.accountId,
-    });
-    if (!medicine) {
-      medicine = await medicineRepo.save(medicineRepo.create(m));
-    }
-    medicines.push(medicine);
+  const masterMeds: Medicine[] = [];
+  for (let i = 0; i < 5; i++) {
+    const med = await medicineRepo.save(
+      medicineRepo.create({
+        name: `Med ${i + 1}`,
+        hsn: `HSN${i + 1}`,
+        contents: [contents[i]],
+      }),
+    );
+    masterMeds.push(med);
+  }
+
+  // --- Medicine Stock ---
+  const medicineStocks: MedicineStock[] = [];
+  for (let i = 0; i < 5; i++) {
+    const stock = await medicineStockRepo.save(
+      medicineStockRepo.create({
+        medicineId: masterMeds[i].medicineId,
+        batchNumber: `BN${i + 1}`,
+        incomingDate: today,
+        expiryDate: new Date(
+          today.getFullYear() + 1,
+          today.getMonth(),
+          today.getDate(),
+        ),
+        unitsPerPack: 10,
+        quantityAvailable: 100,
+        price: '10.00',
+        accountId: ACCOUNT_ID,
+      }),
+    );
+    medicineStocks.push(stock);
   }
 
   // --- MedicineContents ---
   const medContentsRepo = AppDataSource.getRepository(MedicineContents);
-  for (const med of medicines) {
-    const exists = await medContentsRepo.findOneBy({
-      medicine_id: med.medicineId,
-      content_id: med.contentId,
-    });
-    if (!exists) {
-      await medContentsRepo.save(
-        medContentsRepo.create({
-          medicine_id: med.medicineId,
-          content_id: med.contentId,
-        }),
-      );
+  for (const med of masterMeds) {
+    if (med.contents && med.contents.length > 0) {
+      const exists = await medContentsRepo.findOneBy({
+        medicine_id: med.medicineId,
+        content_id: med.contents[0].contentId,
+      });
+      if (!exists) {
+        await medContentsRepo.save(
+          medContentsRepo.create({
+            medicine_id: med.medicineId,
+            content_id: med.contents[0].contentId,
+          }),
+        );
+      }
     }
   }
 
@@ -243,43 +193,23 @@ async function seed() {
 
   // --- IncomingStocks ---
   const incomingStockRepo = AppDataSource.getRepository(IncomingStock);
-  const incomingStocksData = [
-    incomingStockRepo.create({
-      account: { accountId: ACCOUNT_ID },
-      incomingBill: incomingBills[0],
-      medicine: medicines[0],
-      batch_number: medicines[0].batchNumber,
-      incoming_date: medicines[0].incomingDate.toISOString().slice(0, 10),
-      hsn_code: medicines[0].hsn,
-      quantity_received: 10,
-      unit_cost: 18.0,
-      discount_line: 2.0,
-      free_quantity: 0,
-      expiry_date: medicines[0].expiryDate.toISOString().slice(0, 10),
-    }),
-    incomingStockRepo.create({
-      account: { accountId: ACCOUNT_ID },
-      incomingBill: incomingBills[1],
-      medicine: medicines[1],
-      batch_number: medicines[1].batchNumber,
-      incoming_date: medicines[1].incomingDate.toISOString().slice(0, 10),
-      hsn_code: medicines[1].hsn,
-      quantity_received: 100,
-      unit_cost: 100.0,
-      discount_line: 10.0,
-      free_quantity: 5,
-      expiry_date: medicines[1].expiryDate.toISOString().slice(0, 10),
-    }),
-  ];
-  for (const isd of incomingStocksData) {
-    const exists = await incomingStockRepo.findOneBy({
-      batch_number: isd.batch_number,
-      incoming_date: isd.incoming_date,
-      account: { accountId: ACCOUNT_ID },
-    });
-    if (!exists) {
-      await incomingStockRepo.save(isd);
-    }
+  for (let i = 0; i < 2; i++) {
+    await incomingStockRepo.save(
+      incomingStockRepo.create({
+        account: { accountId: ACCOUNT_ID },
+        incomingBill: incomingBills[i],
+        medicine: masterMeds[i],
+        batch_number: medicineStocks[i].batchNumber,
+        incoming_date: medicineStocks[i].incomingDate
+          .toISOString()
+          .slice(0, 10),
+        quantity_received: 10 * (i + 1),
+        unit_cost: 18.0 * (i + 1),
+        discount_line: 2.0 * (i + 1),
+        free_quantity: 0,
+        expiry_date: medicineStocks[i].expiryDate.toISOString().slice(0, 10),
+      }),
+    );
   }
 
   // --- Bills ---
@@ -320,30 +250,28 @@ async function seed() {
   // --- SellingLogs ---
   const sellingLogRepo = AppDataSource.getRepository(SellingLog);
   for (const [i, bill] of bills.entries()) {
-    const med = medicines[i % medicines.length];
-    const exists = await sellingLogRepo.findOneBy({
-      bill: bill,
-      medicine: med,
-      account: { accountId: ACCOUNT_ID },
-    });
-    if (!exists) {
-      await sellingLogRepo.save(
-        sellingLogRepo.create({
-          account: { accountId: ACCOUNT_ID },
-          bill,
-          medicine: med,
-          batch_number: med.batchNumber,
-          quantity_sold: faker.number.int({ min: 1, max: 10 }),
-          discount_line: faker.number.float({
-            min: 0,
-            max: 5,
-            fractionDigits: 2,
+    const med = masterMeds[i % masterMeds.length];
+    const stock = medicineStocks[i % medicineStocks.length];
+    if (med.contents && med.contents.length > 0) {
+      const exists = await sellingLogRepo.findOneBy({
+        bill: bill,
+        medicine: med,
+        batch_number: stock.batchNumber,
+      });
+      if (!exists) {
+        await sellingLogRepo.save(
+          sellingLogRepo.create({
+            bill: bill,
+            medicine: med,
+            batch_number: stock.batchNumber,
+            quantity_sold: 1,
+            discount_line: 0,
+            unit_price_inclusive_gst: parseFloat(stock.price),
+            hsn_code: med.hsn || '',
+            expiry_date: stock.expiryDate.toISOString().slice(0, 10),
           }),
-          unit_price_inclusive_gst: parseFloat(med.price),
-          hsn_code: med.hsn || '',
-          expiry_date: med.expiryDate.toISOString().slice(0, 10),
-        }),
-      );
+        );
+      }
     }
   }
 

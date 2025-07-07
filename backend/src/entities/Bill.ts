@@ -9,6 +9,7 @@ import {
 } from 'typeorm';
 import { Account } from './Account';
 import { Patient } from './Patient';
+import { Customer } from './Customer';
 
 @Entity()
 export class Bill {
@@ -40,6 +41,16 @@ export class Bill {
 
   @Column({ type: 'decimal', precision: 10, scale: 2, default: 0 })
   total_amount!: number;
+
+  @Column({ default: false })
+  credit!: boolean;
+
+  @ManyToOne(() => Customer, { nullable: true })
+  @JoinColumn({ name: 'customerId' })
+  customer?: Customer;
+
+  @Column({ nullable: true })
+  customerId?: number;
 
   @CreateDateColumn()
   created_at!: Date;

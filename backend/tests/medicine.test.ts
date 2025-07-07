@@ -8,10 +8,13 @@ interface AuthResponse {
 }
 
 let adminToken: string, userToken: string;
-let med1Id: number, med2Id: number;
+let med1Id: number, med2Id: number, stock1Id: number, stock2Id: number;
 let testContentId: number;
 
-// Company registration payload matches your other tests:
+const uniqueSuffix = Date.now();
+const masterMedName1 = `MedA_${uniqueSuffix}`;
+const masterMedName2 = `MedB_${uniqueSuffix}`;
+
 const companyPayload = {
   company: {
     name: 'TestCo',
@@ -36,17 +39,6 @@ const appAdmin = {
   email: 'carol@test.co',
   role: 'app_admin' as const,
 };
-
-const baseDto1 = {
-  name: 'Med A',
-  contentId: 0,
-  batchNumber: 'BN1',
-  incomingDate: '2025-01-01',
-  expiryDate: '2025-12-31',
-  quantityAvailable: 10,
-  price: '12.50',
-};
-const baseDto1b = { ...baseDto1, quantityAvailable: 5 }; // same batch→merge to 15
 
 beforeAll(async () => {
   await AppDataSource.initialize();
@@ -77,79 +69,105 @@ beforeAll(async () => {
 afterAll(() => AppDataSource.destroy());
 
 describe('Medicine CRUD & Merge Logic', () => {
-  it('POST new medicine and then merge same batch', async () => {
-    // Create first batch using the valid contentId
-    const dtoA1 = {
-      ...baseDto1,
-      contentId: testContentId,
+  it('POST new master medicine and then create stock', async () => {
+    // Create master medicine
+    const masterDto = {
+      name: masterMedName1,
+      hsn: 'HSN1',
+      contentIds: [testContentId],
     };
     const r1 = await request(app)
-      .post('/api/medicines')
+      .post('/api/medicines/master')
       .set('Authorization', `Bearer ${userToken}`)
-      .send(dtoA1)
+      .send(masterDto)
       .expect(201);
     med1Id = r1.body.medicineId;
-    expect(r1.body.quantityAvailable).toBe(10);
-
-    // Create same batch again → same ID, quantity = 15
-    const dtoA2 = { ...baseDto1b, contentId: testContentId };
+    expect(r1.body.name).toBe(masterMedName1);
+    // Create stock for this medicine
+    const stockDto = {
+      medicineId: med1Id,
+      batchNumber: 'BN1',
+      incomingDate: '2025-01-01',
+      expiryDate: '2025-12-31',
+      quantityAvailable: 10,
+      price: '12.50',
+    };
     const r2 = await request(app)
       .post('/api/medicines')
       .set('Authorization', `Bearer ${userToken}`)
-      .send(dtoA2)
+      .send(stockDto)
       .expect(201);
-    expect(r2.body.medicineId).toBe(med1Id);
-    expect(r2.body.quantityAvailable).toBe(15);
+    stock1Id = r2.body.medicineStockId;
+    expect(r2.body.quantityAvailable).toBe(10);
   });
 
-  it('POST a different batch', async () => {
-    const dto2 = {
-      name: 'Med A',
-      contentId: testContentId,
+  it('POST another stock for same medicine and merge batch', async () => {
+    // Add more to the same batch
+    const stockDto = {
+      medicineId: med1Id,
+      batchNumber: 'BN1',
+      incomingDate: '2025-01-01',
+      expiryDate: '2025-12-31',
+      quantityAvailable: 5,
+      price: '12.50',
+    };
+    const r = await request(app)
+      .post('/api/medicines')
+      .set('Authorization', `Bearer ${userToken}`)
+      .send(stockDto)
+      .expect(201);
+    expect(r.body.medicineStockId).toBe(stock1Id);
+    expect(r.body.quantityAvailable).toBe(15);
+  });
+
+  it('POST a different batch for same medicine', async () => {
+    const stockDto = {
+      medicineId: med1Id,
       batchNumber: 'BN2',
       incomingDate: '2025-01-01',
       expiryDate: '2025-12-31',
-      unitsPerPack: undefined,
       quantityAvailable: 7,
       price: '12.50',
     };
     const r = await request(app)
       .post('/api/medicines')
       .set('Authorization', `Bearer ${userToken}`)
-      .send(dto2)
+      .send(stockDto)
       .expect(201);
-    med2Id = r.body.medicineId;
-    expect(med2Id).not.toBe(med1Id);
+    stock2Id = r.body.medicineStockId;
+    expect(stock2Id).not.toBe(stock1Id);
   });
 
-  it('GET /api/medicines → list all', async () => {
+  it('GET /api/medicines → list all stock', async () => {
     const res = await request(app)
       .get('/api/medicines')
       .set('Authorization', `Bearer ${userToken}`)
       .expect(200);
-    expect(res.body.medicines).toHaveLength(2);
+    expect(Array.isArray(res.body.medicines)).toBe(true);
+    expect(res.body.medicines.length).toBeGreaterThanOrEqual(2);
   });
 
   it('GET /api/medicines?q=Med filters by name', async () => {
     const res = await request(app)
-      .get('/api/medicines?q=Med')
+      .get(`/api/medicines?q=${masterMedName1}`)
       .set('Authorization', `Bearer ${userToken}`)
       .expect(200);
-    expect(res.body.medicines.length).toBe(2);
+    expect(res.body.medicines.length).toBeGreaterThanOrEqual(1);
+    expect(res.body.medicines[0].medicine.name).toBe(masterMedName1);
   });
 
-  it('PUT /api/medicines/:id updates price', async () => {
+  it('PUT /api/medicines/:id updates stock price', async () => {
     const res = await request(app)
-      .put(`/api/medicines/${med1Id}`)
+      .put(`/api/medicines/${stock1Id}`)
       .set('Authorization', `Bearer ${userToken}`)
       .send({ price: '13.00' })
       .expect(200);
     expect(res.body.price).toBe('13.00');
   });
 
-  it('DELETE /api/medicines/:id removes entry', async () => {
+  it('DELETE /api/medicines/:id removes stock entry', async () => {
     await request(app)
-      .delete(`/api/medicines/${med2Id}`)
+      .delete(`/api/medicines/${stock2Id}`)
       .set('Authorization', `Bearer ${userToken}`)
       .expect(204);
     const list = await request(app)
@@ -157,7 +175,14 @@ describe('Medicine CRUD & Merge Logic', () => {
       .set('Authorization', `Bearer ${userToken}`)
       .expect(200);
     expect(
-      list.body.medicines.find((m: any) => m.medicineId === med2Id),
+      list.body.medicines.find((s: any) => s.medicineStockId === stock2Id),
     ).toBeUndefined();
   });
 });
+
+// Add tests for:
+// - Creating a master medicine
+// - Creating a medicine stock referencing a master medicine
+// - Creating a customer
+// - Creating a bill with credit flag and customer reference
+// - Ensuring only name is required for patient

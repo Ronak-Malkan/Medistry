@@ -1,8 +1,8 @@
 import { LessThan } from 'typeorm';
-import { medicineRepository } from '../repositories/medicineRepository';
 import { accountRepository } from '../repositories/accountRepository';
 import { sendEmail } from '../utils/email';
 import { logger } from '../utils/logger';
+import { medicineStockRepository } from '../repositories/medicineStockRepository';
 
 /**
  * Remove expired medicines (expiryDate < today) per account,
@@ -11,20 +11,22 @@ import { logger } from '../utils/logger';
 export async function removeExpiredMedicines() {
   const today = new Date();
   // find all expired entries
-  const expired = await medicineRepository.find({
+  const expired = await medicineStockRepository.find({
     where: { expiryDate: LessThan(today) },
+    relations: ['medicine'],
   });
   // group by account
   const byAccount = new Map<number, string[]>();
-  for (const m of expired) {
-    const list = byAccount.get(m.accountId) ?? [];
-    list.push(m.name);
-    byAccount.set(m.accountId, list);
+  for (const s of expired) {
+    const list = byAccount.get(s.accountId) ?? [];
+    const medName = s.medicine?.name || String(s.medicineId);
+    list.push(medName);
+    byAccount.set(s.accountId, list);
   }
 
   // delete expired and send email
   for (const [accountId, names] of byAccount.entries()) {
-    await medicineRepository.delete({
+    await medicineStockRepository.delete({
       accountId,
       expiryDate: LessThan(today),
     });
@@ -57,11 +59,13 @@ export async function checkLowStockThreshold() {
     const threshold = account.lowStockThreshold;
     if (!threshold) continue;
 
-    const meds = await medicineRepository.find({
+    const stocks = await medicineStockRepository.find({
       where: { accountId: account.accountId },
+      relations: ['medicine'],
     });
-    const sums = meds.reduce((map, m) => {
-      map.set(m.name, (map.get(m.name) ?? 0) + m.quantityAvailable);
+    const sums = stocks.reduce((map, s) => {
+      const medName = s.medicine?.name || String(s.medicineId);
+      map.set(medName, (map.get(medName) ?? 0) + s.quantityAvailable);
       return map;
     }, new Map<string, number>());
 
@@ -83,4 +87,24 @@ export async function checkLowStockThreshold() {
       });
     }
   }
+}
+
+export async function getExpiredStocks(today: Date) {
+  return medicineStockRepository.find({
+    where: { expiryDate: LessThan(today) },
+    relations: ['medicine'],
+  });
+}
+
+export async function getLowStockByAccount(account: { accountId: number }) {
+  const stocks = await medicineStockRepository.find({
+    where: { accountId: account.accountId },
+    relations: ['medicine'],
+  });
+  const map = new Map<string, number>();
+  for (const s of stocks) {
+    const medName = s.medicine?.name || String(s.medicineId);
+    map.set(medName, (map.get(medName) ?? 0) + s.quantityAvailable);
+  }
+  return map;
 }

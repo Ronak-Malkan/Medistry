@@ -12,6 +12,8 @@ import { Patient } from './entities/Patient';
 import { Bill } from './entities/Bill';
 import { SellingLog } from './entities/SellingLog';
 import { MedicineContents } from './entities/MedicineContents';
+import { Customer } from './entities/Customer';
+import { MedicineStock } from './entities/MedicineStock';
 
 export const AppDataSource = new DataSource({
   type: 'postgres',
@@ -22,6 +24,7 @@ export const AppDataSource = new DataSource({
     Account,
     User,
     Medicine,
+    MedicineStock,
     Content,
     Provider,
     IncomingBill,
@@ -30,6 +33,7 @@ export const AppDataSource = new DataSource({
     Bill,
     SellingLog,
     MedicineContents,
+    Customer,
   ],
   migrations: [],
   subscribers: [],

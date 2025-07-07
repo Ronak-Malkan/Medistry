@@ -4,23 +4,21 @@ import {
   Column,
   CreateDateColumn,
   UpdateDateColumn,
-  ManyToMany,
 } from 'typeorm';
-import { Medicine } from './Medicine';
 
-/**
- * An active ingredient / content for medicines.
- */
 @Entity()
-export class Content {
+export class Customer {
   @PrimaryGeneratedColumn()
-  contentId!: number;
+  customerId!: number;
 
   @Column({ unique: true })
   name!: string;
 
-  @ManyToMany(() => Medicine, (med) => med.contents)
-  medicines!: Medicine[];
+  @Column({ nullable: true })
+  phone?: string;
+
+  @Column({ nullable: true })
+  address?: string;
 
   @CreateDateColumn()
   createdAt!: Date;

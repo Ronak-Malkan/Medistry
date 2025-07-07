@@ -12,6 +12,7 @@ let token: string;
 let account: Account;
 let medicine: Medicine;
 let bill: Bill;
+let medicineStockId: number;
 
 beforeAll(async () => {
   await AppDataSource.initialize();
@@ -46,19 +47,27 @@ beforeEach(async () => {
     account: account,
     accountId: account.accountId,
   });
-  // Create test medicine
+  // Create master medicine
   medicine = await AppDataSource.getRepository(Medicine).save({
-    account: account,
-    accountId: account.accountId,
     name: 'TestMed',
-    content: content,
-    contentId: content.contentId,
+    hsn: 'HSN123',
+    contents: [content],
+  });
+  // Create medicine stock
+  const stock = await AppDataSource.getRepository(
+    require('../src/entities/MedicineStock').MedicineStock,
+  ).save({
+    medicine: medicine,
+    medicineId: medicine.medicineId,
     batchNumber: 'BATCH1',
     incomingDate: '2025-07-01',
     expiryDate: '2026-07-01',
     quantityAvailable: 10,
-    price: 100,
+    price: '100',
+    accountId: account.accountId,
+    account: account,
   });
+  medicineStockId = stock.medicineStockId;
   // Create test patient
   const patient = await AppDataSource.getRepository(
     require('../src/entities/Patient').Patient,
@@ -96,14 +105,15 @@ describe('SellingLog API', () => {
       .post('/api/selling-logs')
       .set('Authorization', `Bearer ${token}`)
       .send({
-        bill: { bill_id: bill.bill_id },
-        medicine: { medicineId: medicine.medicineId },
-        batch_number: 'BATCH1',
-        quantity_sold: 5,
-        discount_line: 0,
-        unit_price_inclusive_gst: 120,
-        hsn_code: 'HSN123',
-        expiry_date: '2026-07-01',
+        billId: bill.bill_id,
+        medicineId: medicine.medicineId,
+        batchNumber: 'BATCH1',
+        quantitySold: 5,
+        discountLine: 0,
+        unitPriceInclusiveGst: 120,
+        hsnCode: 'HSN123',
+        expiryDate: '2026-07-01',
+        accountId: account.accountId,
       });
     expect(res.status).toBe(201);
     expect(res.body.selling_log_id).toBeDefined();
@@ -115,14 +125,15 @@ describe('SellingLog API', () => {
       .post('/api/selling-logs')
       .set('Authorization', `Bearer ${token}`)
       .send({
-        bill: { bill_id: bill.bill_id },
-        medicine: { medicineId: medicine.medicineId },
-        batch_number: 'BATCH1',
-        quantity_sold: 100,
-        discount_line: 0,
-        unit_price_inclusive_gst: 120,
-        hsn_code: 'HSN123',
-        expiry_date: '2026-07-01',
+        billId: bill.bill_id,
+        medicineId: medicine.medicineId,
+        batchNumber: 'BATCH1',
+        quantitySold: 100,
+        discountLine: 0,
+        unitPriceInclusiveGst: 120,
+        hsnCode: 'HSN123',
+        expiryDate: '2026-07-01',
+        accountId: account.accountId,
       });
     expect(res.status).toBe(400);
   });

@@ -34,9 +34,6 @@ export class IncomingStock {
   @Column({ type: 'date' })
   incoming_date!: string;
 
-  @Column({ type: 'varchar', length: 50 })
-  hsn_code!: string;
-
   @Column({ type: 'int' })
   quantity_received!: number;
 

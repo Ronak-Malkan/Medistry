@@ -14,6 +14,7 @@ let account: Account;
 let provider: Provider;
 let medicine: Medicine;
 let incomingBill: IncomingBill;
+let medicineStockId: number;
 
 beforeAll(async () => {
   await AppDataSource.initialize();
@@ -56,18 +57,11 @@ beforeEach(async () => {
     account: account,
     accountId: account.accountId,
   });
-  // Create test medicine
+  // Create master medicine
   medicine = await AppDataSource.getRepository(Medicine).save({
-    account: account,
-    accountId: account.accountId,
     name: 'TestMed',
-    content: content,
-    contentId: content.contentId,
-    batchNumber: 'BATCH1',
-    incomingDate: '2025-07-01',
-    expiryDate: '2026-07-01',
-    quantityAvailable: 0,
-    price: 100,
+    hsn: 'HSN123',
+    contents: [content],
   });
   // Create test incoming bill
   incomingBill = await AppDataSource.getRepository(IncomingBill).save({
@@ -100,20 +94,24 @@ describe('IncomingStock API', () => {
       .post('/api/incoming-stocks')
       .set('Authorization', `Bearer ${token}`)
       .send({
-        incomingBill: { incoming_bill_id: incomingBill.incoming_bill_id },
-        medicine: { medicineId: medicine.medicineId },
-        batch_number: 'BATCH1',
-        incoming_date: '2025-07-01',
-        hsn_code: 'HSN123',
-        quantity_received: 10,
-        unit_cost: 10,
-        discount_line: 0,
-        free_quantity: 0,
-        expiry_date: '2026-07-01',
+        incomingBillId: incomingBill.incoming_bill_id,
+        medicineId: medicine.medicineId,
+        batchNumber: 'BATCH1',
+        incomingDate: '2025-07-01',
+        hsnCode: 'HSN123',
+        quantityReceived: 10,
+        unitCost: 10,
+        discountLine: 0,
+        freeQuantity: 0,
+        expiryDate: '2026-07-01',
+        accountId: account.accountId,
       });
     expect(res.status).toBe(201);
-    expect(res.body.incoming_stock_id).toBeDefined();
-    stockId = res.body.incoming_stock_id;
+    expect(
+      res.body.medicineStockId || res.body.medicineStock?.medicineStockId,
+    ).toBeDefined();
+    stockId =
+      res.body.medicineStockId || res.body.medicineStock?.medicineStockId;
   });
 
   it('should merge with existing stock (same batch/incoming/expiry)', async () => {
@@ -122,35 +120,37 @@ describe('IncomingStock API', () => {
       .post('/api/incoming-stocks')
       .set('Authorization', `Bearer ${token}`)
       .send({
-        incomingBill: { incoming_bill_id: incomingBill.incoming_bill_id },
-        medicine: { medicineId: medicine.medicineId },
-        batch_number: 'BATCH1',
-        incoming_date: '2025-07-01',
-        hsn_code: 'HSN123',
-        quantity_received: 10,
-        unit_cost: 10,
-        discount_line: 0,
-        free_quantity: 0,
-        expiry_date: '2026-07-01',
+        incomingBillId: incomingBill.incoming_bill_id,
+        medicineId: medicine.medicineId,
+        batchNumber: 'BATCH1',
+        incomingDate: '2025-07-01',
+        hsnCode: 'HSN123',
+        quantityReceived: 10,
+        unitCost: 10,
+        discountLine: 0,
+        freeQuantity: 0,
+        expiryDate: '2026-07-01',
+        accountId: account.accountId,
       });
     // Now send the second (merge) request
     const res = await request(app)
       .post('/api/incoming-stocks')
       .set('Authorization', `Bearer ${token}`)
       .send({
-        incomingBill: { incoming_bill_id: incomingBill.incoming_bill_id },
-        medicine: { medicineId: medicine.medicineId },
-        batch_number: 'BATCH1',
-        incoming_date: '2025-07-01',
-        hsn_code: 'HSN123',
-        quantity_received: 5,
-        unit_cost: 10,
-        discount_line: 0,
-        free_quantity: 0,
-        expiry_date: '2026-07-01',
+        incomingBillId: incomingBill.incoming_bill_id,
+        medicineId: medicine.medicineId,
+        batchNumber: 'BATCH1',
+        incomingDate: '2025-07-01',
+        hsnCode: 'HSN123',
+        quantityReceived: 5,
+        unitCost: 10,
+        discountLine: 0,
+        freeQuantity: 0,
+        expiryDate: '2026-07-01',
+        accountId: account.accountId,
       });
     expect(res.status).toBe(201);
-    expect(res.body.quantity_received).toBe(15); // 10 + 5
+    expect(res.body.quantityAvailable).toBe(15); // 10 + 5
   });
 
   it('should get all incoming stocks', async () => {

@@ -18,20 +18,20 @@ export class Patient {
   @JoinColumn({ name: 'account_id' })
   account!: Account;
 
-  @Column({ type: 'varchar', length: 255 })
+  @Column()
   name!: string;
 
-  @Column({ type: 'varchar', length: 20, nullable: true })
-  phone!: string;
+  @Column({ nullable: true })
+  phone?: string;
 
-  @Column({ type: 'text', nullable: true })
-  address!: string;
+  @Column({ nullable: true })
+  address?: string;
 
-  @Column({ type: 'date', nullable: true })
-  date_of_birth!: string;
+  @Column({ nullable: true })
+  date_of_birth?: string;
 
-  @Column({ type: 'enum', enum: ['Male', 'Female', 'Other'], nullable: true })
-  gender!: 'Male' | 'Female' | 'Other';
+  @Column({ nullable: true })
+  gender?: string;
 
   @CreateDateColumn()
   created_at!: Date;
