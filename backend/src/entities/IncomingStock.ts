@@ -20,7 +20,7 @@ export class IncomingStock {
   @JoinColumn({ name: 'account_id' })
   account!: Account;
 
-  @ManyToOne(() => IncomingBill, { nullable: false })
+  @ManyToOne(() => IncomingBill, { nullable: false, onDelete: 'CASCADE' })
   @JoinColumn({ name: 'incoming_bill_id' })
   incomingBill!: IncomingBill;
 

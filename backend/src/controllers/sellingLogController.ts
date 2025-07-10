@@ -9,6 +9,40 @@ interface AuthRequest extends Request {
 const router = Router();
 const sellingLogService = new SellingLogService();
 
+/**
+ * @swagger
+ * /api/selling-logs:
+ *   get:
+ *     summary: List all selling logs
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: List of selling logs
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/SellingLog'
+ *   post:
+ *     summary: Create a new selling log
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/SellingLog'
+ *     responses:
+ *       201:
+ *         description: Created selling log
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/SellingLog'
+ */
 // Create selling log (decrement stock)
 router.post(
   '/',

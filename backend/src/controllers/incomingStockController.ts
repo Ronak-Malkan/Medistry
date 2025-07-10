@@ -10,6 +10,40 @@ interface AuthRequest extends Request {
 const router = Router();
 const incomingStockService = new IncomingStockService();
 
+/**
+ * @swagger
+ * /api/medicine-stock:
+ *   get:
+ *     summary: List all medicine stock entries
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: List of medicine stock
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/MedicineStock'
+ *   post:
+ *     summary: Create or update a medicine stock entry
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/MedicineStock'
+ *     responses:
+ *       201:
+ *         description: Created or updated medicine stock
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/MedicineStock'
+ */
 // Create or update incoming stock (merge logic)
 router.post(
   '/',

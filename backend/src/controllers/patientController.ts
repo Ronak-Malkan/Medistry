@@ -9,6 +9,40 @@ interface AuthRequest extends Request {
 const router = Router();
 const patientService = new PatientService();
 
+/**
+ * @swagger
+ * /api/patients:
+ *   get:
+ *     summary: List all patients
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: List of patients
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/Patient'
+ *   post:
+ *     summary: Create a new patient
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/Patient'
+ *     responses:
+ *       201:
+ *         description: Created patient
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Patient'
+ */
 // Create patient
 router.post(
   '/',
@@ -33,6 +67,22 @@ router.get(
       const { accountId } = (req as AuthRequest).auth;
       const patients = await patientService.findByAccount(accountId);
       res.json(patients);
+    } catch (err) {
+      res.status(500).json({ error: (err as Error).message });
+    }
+  },
+);
+
+// Smart search endpoint
+router.get(
+  '/search',
+  requireRole('app_admin'),
+  async (req: Request, res: Response) => {
+    const { accountId } = (req as AuthRequest).auth;
+    const q = (req.query.q as string) || '';
+    try {
+      const results = await patientService.smartSearch(q, accountId, 10);
+      res.json(results);
     } catch (err) {
       res.status(500).json({ error: (err as Error).message });
     }

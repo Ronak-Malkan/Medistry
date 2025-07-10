@@ -57,12 +57,17 @@ afterAll(async () => {
 });
 
 describe('IncomingBill API', () => {
-  it('should create an incoming bill', async () => {
-    const res = await request(app)
-      .post('/api/incoming-bills')
+  it('should create an incoming bill with multiple entries (existing and new medicines)', async () => {
+    // Create an existing medicine
+    const medRes = await request(app)
+      .post('/api/medicines/master')
       .set('Authorization', `Bearer ${token}`)
-      .send({
-        provider: { providerId: provider.providerId },
+      .send({ name: 'BulkMedA', hsn: 'HSN1', contentIds: [] });
+    const existingMedicineId = medRes.body.medicineId;
+
+    const payload = {
+      bill: {
+        provider: provider.providerId,
         invoice_number: 'INV-001',
         invoice_date: '2025-07-01',
         payment_status: 'Paid',
@@ -70,26 +75,166 @@ describe('IncomingBill API', () => {
         sgst_total: 0,
         cgst_total: 0,
         total_amount: 1000,
-      });
+      },
+      entries: [
+        {
+          medicineId: existingMedicineId,
+          batchNumber: 'BATCH1',
+          incomingDate: '2025-07-01',
+          expiryDate: '2026-07-01',
+          quantity: 10,
+          price: 100,
+        },
+        {
+          name: 'BulkMedB',
+          hsn: 'HSN2',
+          batchNumber: 'BATCH2',
+          incomingDate: '2025-07-01',
+          expiryDate: '2026-07-01',
+          quantity: 5,
+          price: 200,
+        },
+      ],
+    };
+    const res = await request(app)
+      .post('/api/incoming-bills')
+      .set('Authorization', `Bearer ${token}`)
+      .send(payload);
     expect(res.status).toBe(201);
-    expect(res.body.incoming_bill_id).toBeDefined();
+    expect(res.body.bill).toBeDefined();
+    expect(res.body.stocks.length).toBe(2);
+    expect(res.body.logs.length).toBe(2);
+  });
+
+  it('should fail to create a bill with missing entries', async () => {
+    const payload = {
+      bill: {
+        provider: provider.providerId,
+        invoice_number: 'INV-002',
+        invoice_date: '2025-07-01',
+        payment_status: 'Paid',
+        discount_total: 0,
+        sgst_total: 0,
+        cgst_total: 0,
+        total_amount: 1000,
+      },
+      // entries missing
+    };
+    const res = await request(app)
+      .post('/api/incoming-bills')
+      .set('Authorization', `Bearer ${token}`)
+      .send(payload);
+    expect(res.status).toBe(400);
+  });
+
+  it('should fail to create a bill with empty entries', async () => {
+    const payload = {
+      bill: {
+        provider: provider.providerId,
+        invoice_number: 'INV-003',
+        invoice_date: '2025-07-01',
+        payment_status: 'Paid',
+        discount_total: 0,
+        sgst_total: 0,
+        cgst_total: 0,
+        total_amount: 1000,
+      },
+      entries: [],
+    };
+    const res = await request(app)
+      .post('/api/incoming-bills')
+      .set('Authorization', `Bearer ${token}`)
+      .send(payload);
+    expect(res.status).toBe(400);
+  });
+
+  it('should fail to create a bill with invalid medicineId', async () => {
+    const payload = {
+      bill: {
+        provider: provider.providerId,
+        invoice_number: 'INV-004',
+        invoice_date: '2025-07-01',
+        payment_status: 'Paid',
+        discount_total: 0,
+        sgst_total: 0,
+        cgst_total: 0,
+        total_amount: 1000,
+      },
+      entries: [
+        {
+          medicineId: 99999, // invalid
+          batchNumber: 'BATCH1',
+          incomingDate: '2025-07-01',
+          expiryDate: '2026-07-01',
+          quantity: 10,
+          price: 100,
+        },
+      ],
+    };
+    const res = await request(app)
+      .post('/api/incoming-bills')
+      .set('Authorization', `Bearer ${token}`)
+      .send(payload);
+    expect(res.status).toBe(400);
+  });
+
+  it('should require auth for creating a bill', async () => {
+    const payload = {
+      bill: {
+        provider: provider.providerId,
+        invoice_number: 'INV-005',
+        invoice_date: '2025-07-01',
+        payment_status: 'Paid',
+        discount_total: 0,
+        sgst_total: 0,
+        cgst_total: 0,
+        total_amount: 1000,
+      },
+      entries: [
+        {
+          name: 'BulkMedC',
+          hsn: 'HSN3',
+          batchNumber: 'BATCH3',
+          incomingDate: '2025-07-01',
+          expiryDate: '2026-07-01',
+          quantity: 5,
+          price: 200,
+        },
+      ],
+    };
+    const res = await request(app).post('/api/incoming-bills').send(payload);
+    expect(res.status).toBe(401);
   });
 
   it('should get all incoming bills', async () => {
     // Create a bill first
-    await request(app)
-      .post('/api/incoming-bills')
-      .set('Authorization', `Bearer ${token}`)
-      .send({
-        provider: { providerId: provider.providerId },
-        invoice_number: 'INV-001',
+    const payload = {
+      bill: {
+        provider: provider.providerId,
+        invoice_number: 'INV-006',
         invoice_date: '2025-07-01',
         payment_status: 'Paid',
         discount_total: 0,
         sgst_total: 0,
         cgst_total: 0,
         total_amount: 1000,
-      });
+      },
+      entries: [
+        {
+          name: 'BulkMedD',
+          hsn: 'HSN4',
+          batchNumber: 'BATCH4',
+          incomingDate: '2025-07-01',
+          expiryDate: '2026-07-01',
+          quantity: 5,
+          price: 200,
+        },
+      ],
+    };
+    await request(app)
+      .post('/api/incoming-bills')
+      .set('Authorization', `Bearer ${token}`)
+      .send(payload);
     const res = await request(app)
       .get('/api/incoming-bills')
       .set('Authorization', `Bearer ${token}`);
@@ -100,20 +245,34 @@ describe('IncomingBill API', () => {
 
   it('should get an incoming bill by id', async () => {
     // Create a bill first
-    const createRes = await request(app)
-      .post('/api/incoming-bills')
-      .set('Authorization', `Bearer ${token}`)
-      .send({
-        provider: { providerId: provider.providerId },
-        invoice_number: 'INV-001',
+    const payload = {
+      bill: {
+        provider: provider.providerId,
+        invoice_number: 'INV-007',
         invoice_date: '2025-07-01',
         payment_status: 'Paid',
         discount_total: 0,
         sgst_total: 0,
         cgst_total: 0,
         total_amount: 1000,
-      });
-    const billId = createRes.body.incoming_bill_id;
+      },
+      entries: [
+        {
+          name: 'BulkMedE',
+          hsn: 'HSN5',
+          batchNumber: 'BATCH5',
+          incomingDate: '2025-07-01',
+          expiryDate: '2026-07-01',
+          quantity: 5,
+          price: 200,
+        },
+      ],
+    };
+    const createRes = await request(app)
+      .post('/api/incoming-bills')
+      .set('Authorization', `Bearer ${token}`)
+      .send(payload);
+    const billId = createRes.body.bill.incoming_bill_id;
     const res = await request(app)
       .get(`/api/incoming-bills/${billId}`)
       .set('Authorization', `Bearer ${token}`);
@@ -123,20 +282,34 @@ describe('IncomingBill API', () => {
 
   it('should update an incoming bill', async () => {
     // Create a bill first
-    const createRes = await request(app)
-      .post('/api/incoming-bills')
-      .set('Authorization', `Bearer ${token}`)
-      .send({
-        provider: { providerId: provider.providerId },
-        invoice_number: 'INV-001',
+    const payload = {
+      bill: {
+        provider: provider.providerId,
+        invoice_number: 'INV-008',
         invoice_date: '2025-07-01',
         payment_status: 'Paid',
         discount_total: 0,
         sgst_total: 0,
         cgst_total: 0,
         total_amount: 1000,
-      });
-    const billId = createRes.body.incoming_bill_id;
+      },
+      entries: [
+        {
+          name: 'BulkMedF',
+          hsn: 'HSN6',
+          batchNumber: 'BATCH6',
+          incomingDate: '2025-07-01',
+          expiryDate: '2026-07-01',
+          quantity: 5,
+          price: 200,
+        },
+      ],
+    };
+    const createRes = await request(app)
+      .post('/api/incoming-bills')
+      .set('Authorization', `Bearer ${token}`)
+      .send(payload);
+    const billId = createRes.body.bill.incoming_bill_id;
     const res = await request(app)
       .put(`/api/incoming-bills/${billId}`)
       .set('Authorization', `Bearer ${token}`)
@@ -154,20 +327,34 @@ describe('IncomingBill API', () => {
 
   it('should delete an incoming bill', async () => {
     // Create a bill first
-    const createRes = await request(app)
-      .post('/api/incoming-bills')
-      .set('Authorization', `Bearer ${token}`)
-      .send({
-        provider: { providerId: provider.providerId },
-        invoice_number: 'INV-001',
+    const payload = {
+      bill: {
+        provider: provider.providerId,
+        invoice_number: 'INV-009',
         invoice_date: '2025-07-01',
         payment_status: 'Paid',
         discount_total: 0,
         sgst_total: 0,
         cgst_total: 0,
         total_amount: 1000,
-      });
-    const billId = createRes.body.incoming_bill_id;
+      },
+      entries: [
+        {
+          name: 'BulkMedG',
+          hsn: 'HSN7',
+          batchNumber: 'BATCH7',
+          incomingDate: '2025-07-01',
+          expiryDate: '2026-07-01',
+          quantity: 5,
+          price: 200,
+        },
+      ],
+    };
+    const createRes = await request(app)
+      .post('/api/incoming-bills')
+      .set('Authorization', `Bearer ${token}`)
+      .send(payload);
+    const billId = createRes.body.bill.incoming_bill_id;
     const res = await request(app)
       .delete(`/api/incoming-bills/${billId}`)
       .set('Authorization', `Bearer ${token}`);
@@ -179,10 +366,5 @@ describe('IncomingBill API', () => {
       .delete(`/api/incoming-bills/99999`)
       .set('Authorization', `Bearer ${token}`);
     expect(res.status).toBe(404);
-  });
-
-  it('should fail without auth', async () => {
-    const res = await request(app).get('/api/incoming-bills');
-    expect(res.status).toBe(401);
   });
 });

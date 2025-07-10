@@ -26,10 +26,10 @@ export class MedicineStock {
   batchNumber!: string;
 
   @Column({ type: 'date' })
-  incomingDate!: Date;
+  incomingDate!: string;
 
   @Column({ type: 'date' })
-  expiryDate!: Date;
+  expiryDate!: string;
 
   @Column({ type: 'int', nullable: true })
   unitsPerPack?: number;

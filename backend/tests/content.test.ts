@@ -133,3 +133,91 @@ describe('Content CRUD Endpoints', () => {
     expect(res.body.contents).toEqual([]);
   });
 });
+
+describe('Content Smart Search Endpoints', () => {
+  beforeAll(async () => {
+    // Add multiple contents for search tests
+    const names = [
+      'Paracetamol',
+      'Pantoprazole',
+      'Amoxicillin',
+      'Amlodipine',
+      'Cetirizine',
+      'Cefixime',
+      'Azithromycin',
+      'Atorvastatin',
+      'Metformin',
+      'Metronidazole',
+      'Ibuprofen',
+      'Ivermectin',
+      'Doxycycline',
+      'Diclofenac',
+      'Domperidone',
+      'Dexamethasone',
+      'Clopidogrel',
+      'Ciprofloxacin',
+    ];
+    for (const name of names) {
+      await request(app)
+        .post('/api/contents')
+        .set('Authorization', `Bearer ${userToken}`)
+        .send({ name });
+    }
+  });
+
+  it('GET /api/contents/search?prefix=Pa returns top 15 prefix matches', async () => {
+    const res = await request(app)
+      .get('/api/contents/search?prefix=Pa')
+      .set('Authorization', `Bearer ${userToken}`);
+    expect(res.status).toBe(200);
+    expect(Array.isArray(res.body)).toBe(true);
+    expect(res.body.length).toBeLessThanOrEqual(15);
+    expect(res.body.some((c: any) => c.name.startsWith('Pa'))).toBe(true);
+  });
+
+  it('GET /api/contents/search?prefix=Me returns Metformin and Metronidazole', async () => {
+    const res = await request(app)
+      .get('/api/contents/search?prefix=Me')
+      .set('Authorization', `Bearer ${userToken}`);
+    expect(res.status).toBe(200);
+    const names = res.body.map((c: any) => c.name);
+    expect(names).toEqual(
+      expect.arrayContaining(['Metformin', 'Metronidazole']),
+    );
+  });
+
+  it('GET /api/contents/search?prefix=Zzzz returns empty array', async () => {
+    const res = await request(app)
+      .get('/api/contents/search?prefix=Zzzz')
+      .set('Authorization', `Bearer ${userToken}`);
+    expect(res.status).toBe(200);
+    expect(res.body).toEqual([]);
+  });
+
+  it('GET /api/contents/searchall?prefix=Am returns all Am* matches', async () => {
+    const res = await request(app)
+      .get('/api/contents/searchall?prefix=Am')
+      .set('Authorization', `Bearer ${userToken}`);
+    expect(res.status).toBe(200);
+    const names = res.body.map((c: any) => c.name);
+    expect(names).toEqual(
+      expect.arrayContaining(['Amoxicillin', 'Amlodipine']),
+    );
+    expect(names.every((n: string) => n.startsWith('Am'))).toBe(true);
+  });
+
+  it('GET /api/contents/searchall?prefix= returns all contents (no prefix)', async () => {
+    const res = await request(app)
+      .get('/api/contents/searchall?prefix=')
+      .set('Authorization', `Bearer ${userToken}`);
+    expect(res.status).toBe(200);
+    expect(res.body.length).toBeGreaterThan(10);
+  });
+
+  it('GET /api/contents/search without app_admin role returns 403', async () => {
+    const res = await request(app)
+      .get('/api/contents/search?prefix=Pa')
+      .set('Authorization', `Bearer ${adminToken}`); // not app_admin
+    expect([401, 403]).toContain(res.status);
+  });
+});

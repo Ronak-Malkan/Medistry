@@ -42,3 +42,25 @@ export async function deleteContent(contentId: number): Promise<void> {
     throw new Error('Content not found');
   }
 }
+
+export async function smartSearchContents(
+  prefix: string,
+  limit?: number,
+): Promise<Content[]> {
+  const where = prefix ? { name: ILike(`${prefix}%`) } : {};
+  return contentRepository.find({
+    where,
+    take: limit,
+    order: { name: 'ASC' },
+  });
+}
+
+export async function smartSearchAllContents(
+  prefix: string,
+): Promise<Content[]> {
+  const where = prefix ? { name: ILike(`${prefix}%`) } : {};
+  return contentRepository.find({
+    where,
+    order: { name: 'ASC' },
+  });
+}

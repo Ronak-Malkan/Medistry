@@ -9,6 +9,101 @@ interface AuthRequest extends Request {
 const router = Router();
 const billService = new BillService();
 
+/**
+ * @swagger
+ * /api/bills:
+ *   get:
+ *     summary: List all bills
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: List of bills
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/Bill'
+ *   post:
+ *     summary: Create a new bill (current logic only)
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               bill:
+ *                 $ref: '#/components/schemas/Bill'
+ *               entries:
+ *                 type: array
+ *                 items:
+ *                   $ref: '#/components/schemas/BillEntry'
+ *     responses:
+ *       201:
+ *         description: Created bill
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Bill'
+ * /api/bills/{id}:
+ *   get:
+ *     summary: Get bill by ID
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Bill details
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Bill'
+ *   put:
+ *     summary: Update a bill
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/Bill'
+ *     responses:
+ *       200:
+ *         description: Updated bill
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Bill'
+ *   delete:
+ *     summary: Delete a bill
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       204:
+ *         description: Deleted
+ */
 // Create bill
 router.post(
   '/',
@@ -17,8 +112,14 @@ router.post(
     try {
       console.log('POST /api/bills - req.body:', req.body);
       const { accountId } = (req as AuthRequest).auth;
-      const bill = await billService.create(req.body, accountId);
-      res.status(201).json(bill);
+      if (req.body && req.body.bill && Array.isArray(req.body.entries)) {
+        const result = await billService.createBulk(req.body, accountId);
+        res.status(201).json(result);
+      } else {
+        res
+          .status(400)
+          .json({ error: 'Payload must have { bill, entries } structure' });
+      }
     } catch (err) {
       console.error('POST /api/bills - error:', err);
       res.status(400).json({ error: (err as Error).message });
@@ -53,7 +154,9 @@ router.get(
         accountId,
       );
       if (!bill) return res.status(404).json({ error: 'Bill not found' });
-      res.json(bill);
+      // Return patient at root for test compatibility
+      const { patient, ...billData } = bill;
+      res.json({ ...billData, patient });
     } catch (err) {
       res.status(500).json({ error: (err as Error).message });
     }

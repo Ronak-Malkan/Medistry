@@ -1,5 +1,6 @@
 import { patientRepository } from '../repositories/patientRepository';
 import { Patient } from '../entities/Patient';
+import { AppDataSource } from '../data-source';
 
 export class PatientService {
   async create(data: Partial<Patient>, accountId: number) {
@@ -30,5 +31,15 @@ export class PatientService {
 
   async delete(id: number, accountId: number) {
     return patientRepository.delete({ patient_id: id, account: { accountId } });
+  }
+
+  async smartSearch(q: string, accountId: number, limit: number) {
+    return AppDataSource.getRepository(Patient)
+      .createQueryBuilder('patient')
+      .innerJoin('patient.account', 'account')
+      .where('account.accountId = :accountId', { accountId })
+      .andWhere('patient.name ILIKE :q', { q: `%${q}%` })
+      .limit(limit)
+      .getMany();
   }
 }

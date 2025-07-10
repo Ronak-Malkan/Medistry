@@ -10,6 +10,21 @@ interface ReqWithAuth extends Request {
 const router = Router();
 
 /**
+ * @swagger
+ * /api/accounts:
+ *   get:
+ *     summary: Get account details
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Account details
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Account'
+ */
+/**
  * GET /api/accounts
  */
 router.get(

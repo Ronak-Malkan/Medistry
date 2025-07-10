@@ -2,187 +2,229 @@
 import request from 'supertest';
 import { app } from '../src/app';
 import { AppDataSource } from '../src/data-source';
+import { Account } from '../src/entities/Account';
+import { User } from '../src/entities/User';
+import jwt from 'jsonwebtoken';
+import { Content } from '../src/entities/Content';
 
-interface AuthResponse {
-  token: string;
+let token: string;
+let account: Account;
+let user: User;
+let medicineId: number;
+
+// Helper to create a medicine
+async function createMedicine(accountId: number, name: string, hsn?: string) {
+  const res = await request(app)
+    .post('/api/medicines/master')
+    .set('Authorization', `Bearer ${token}`)
+    .send({
+      name,
+      hsn,
+    });
+  return res.body.medicineId || res.body.id;
 }
 
-let adminToken: string, userToken: string;
-let med1Id: number, med2Id: number, stock1Id: number, stock2Id: number;
-let testContentId: number;
-
-const uniqueSuffix = Date.now();
-const masterMedName1 = `MedA_${uniqueSuffix}`;
-const masterMedName2 = `MedB_${uniqueSuffix}`;
-
-const companyPayload = {
-  company: {
-    name: 'TestCo',
-    drugLicenseNumber: 'DL123',
-    address: '123 Main St',
-    contactEmail: 'contact@test.co',
-    contactPhone: '1234567890',
-    lowStockThreshold: 5,
-    expiryAlertLeadTime: 10,
-  },
-  admin: {
-    username: 'alice',
-    password: 'Secret123!',
-    fullName: 'Alice Smith',
-    email: 'alice@test.co',
-  },
-};
-const appAdmin = {
-  username: 'carol',
-  password: 'Carol123!',
-  fullName: 'Carol Doc',
-  email: 'carol@test.co',
-  role: 'app_admin' as const,
-};
-
-beforeAll(async () => {
-  await AppDataSource.initialize();
-  await AppDataSource.synchronize(true);
-  const reg = await request(app)
-    .post('/auth/company/register')
-    .send(companyPayload);
-  adminToken = reg.body.token;
-  await request(app)
-    .post('/api/users')
-    .set('Authorization', `Bearer ${adminToken}`)
-    .send(appAdmin);
-  const log = await request(app).post('/auth/login').send({
-    username: appAdmin.username,
-    password: appAdmin.password,
-    loginAs: 'user',
-  });
-  userToken = log.body.token;
-  // Create one Content entry for medicines to reference
-  const contentRes = await request(app)
-    .post('/api/contents')
-    .set('Authorization', `Bearer ${userToken}`)
-    .send({ name: 'TestMedContent' })
-    .expect(201);
-  testContentId = contentRes.body.contentId;
-}, 20000);
-
-afterAll(() => AppDataSource.destroy());
-
-describe('Medicine CRUD & Merge Logic', () => {
-  it('POST new master medicine and then create stock', async () => {
-    // Create master medicine
-    const masterDto = {
-      name: masterMedName1,
-      hsn: 'HSN1',
-      contentIds: [testContentId],
-    };
-    const r1 = await request(app)
-      .post('/api/medicines/master')
-      .set('Authorization', `Bearer ${userToken}`)
-      .send(masterDto)
-      .expect(201);
-    med1Id = r1.body.medicineId;
-    expect(r1.body.name).toBe(masterMedName1);
-    // Create stock for this medicine
-    const stockDto = {
-      medicineId: med1Id,
-      batchNumber: 'BN1',
-      incomingDate: '2025-01-01',
-      expiryDate: '2025-12-31',
-      quantityAvailable: 10,
-      price: '12.50',
-    };
-    const r2 = await request(app)
-      .post('/api/medicines')
-      .set('Authorization', `Bearer ${userToken}`)
-      .send(stockDto)
-      .expect(201);
-    stock1Id = r2.body.medicineStockId;
-    expect(r2.body.quantityAvailable).toBe(10);
+describe('Medicine Controller (/api/medicines/master)', () => {
+  beforeAll(async () => {
+    await AppDataSource.initialize();
   });
 
-  it('POST another stock for same medicine and merge batch', async () => {
-    // Add more to the same batch
-    const stockDto = {
-      medicineId: med1Id,
-      batchNumber: 'BN1',
-      incomingDate: '2025-01-01',
-      expiryDate: '2025-12-31',
-      quantityAvailable: 5,
-      price: '12.50',
-    };
-    const r = await request(app)
-      .post('/api/medicines')
-      .set('Authorization', `Bearer ${userToken}`)
-      .send(stockDto)
-      .expect(201);
-    expect(r.body.medicineStockId).toBe(stock1Id);
-    expect(r.body.quantityAvailable).toBe(15);
+  beforeEach(async () => {
+    await AppDataSource.synchronize(true);
+    // Create test account
+    account = await AppDataSource.getRepository(Account).save({
+      name: 'Test Pharmacy',
+      drugLicenseNumber: 'DL123',
+      address: '123 Main St',
+      contactEmail: 'test@pharmacy.com',
+      contactPhone: '1234567890',
+      lowStockThreshold: 5,
+      expiryAlertLeadTime: 30,
+    });
+    // Create test user
+    user = await AppDataSource.getRepository(User).save({
+      account: account,
+      username: 'medadmin',
+      passwordHash: 'hashed',
+      fullName: 'Med Admin',
+      email: 'medadmin@pharmacy.com',
+      role: 'app_admin',
+    });
+    // Generate JWT
+    token = jwt.sign(
+      { userId: user.userId, accountId: account.accountId, role: user.role },
+      process.env.JWT_SECRET || 'testsecret',
+      { expiresIn: '1h' },
+    );
   });
 
-  it('POST a different batch for same medicine', async () => {
-    const stockDto = {
-      medicineId: med1Id,
-      batchNumber: 'BN2',
-      incomingDate: '2025-01-01',
-      expiryDate: '2025-12-31',
-      quantityAvailable: 7,
-      price: '12.50',
-    };
-    const r = await request(app)
-      .post('/api/medicines')
-      .set('Authorization', `Bearer ${userToken}`)
-      .send(stockDto)
-      .expect(201);
-    stock2Id = r.body.medicineStockId;
-    expect(stock2Id).not.toBe(stock1Id);
-  });
-
-  it('GET /api/medicines → list all stock', async () => {
+  it('should create a new medicine', async () => {
     const res = await request(app)
-      .get('/api/medicines')
-      .set('Authorization', `Bearer ${userToken}`)
-      .expect(200);
+      .post('/api/medicines/master')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ name: 'Ibuprofen', hsn: 'HSN123' });
+    expect(res.status).toBe(201);
+    expect(res.body).toHaveProperty('medicineId');
+    expect(res.body.name).toBe('Ibuprofen');
+    expect(res.body.hsn).toBe('HSN123');
+    medicineId = res.body.medicineId;
+  });
+
+  it('should create a medicine with contents', async () => {
+    // Create contents
+    const contentA = await AppDataSource.getRepository(Content).save({
+      name: 'Paracetamol',
+    });
+    const contentB = await AppDataSource.getRepository(Content).save({
+      name: 'Caffeine',
+    });
+    const res = await request(app)
+      .post('/api/medicines/master')
+      .set('Authorization', `Bearer ${token}`)
+      .send({
+        name: 'Dolo Plus',
+        hsn: 'HSN321',
+        contents: [contentA.contentId, contentB.contentId],
+      });
+    expect(res.status).toBe(201);
+    expect(res.body).toHaveProperty('medicineId');
+    expect(res.body.contents.length).toBe(2);
+    expect(res.body.contents.map((c) => c.contentId)).toEqual(
+      expect.arrayContaining([contentA.contentId, contentB.contentId]),
+    );
+  });
+
+  it('should update a medicine and its contents', async () => {
+    const contentA = await AppDataSource.getRepository(Content).save({
+      name: 'Paracetamol',
+    });
+    const contentB = await AppDataSource.getRepository(Content).save({
+      name: 'Caffeine',
+    });
+    const medRes = await request(app)
+      .post('/api/medicines/master')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ name: 'Dolo', hsn: 'HSN111', contents: [contentA.contentId] });
+    const medId = medRes.body.medicineId;
+    const updateRes = await request(app)
+      .put(`/api/medicines/master/${medId}`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ contents: [contentA.contentId, contentB.contentId] });
+    expect(updateRes.status).toBe(200);
+    expect(updateRes.body.contents.length).toBe(2);
+    expect(updateRes.body.contents.map((c) => c.contentId)).toEqual(
+      expect.arrayContaining([contentA.contentId, contentB.contentId]),
+    );
+  });
+
+  it('should return top 15 medicines matching prefix (smart search)', async () => {
+    await request(app)
+      .post('/api/medicines/master')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ name: 'Paracetamol', hsn: 'HSN001' });
+    await request(app)
+      .post('/api/medicines/master')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ name: 'Paracip', hsn: 'HSN002' });
+    await request(app)
+      .post('/api/medicines/master')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ name: 'Ibuprofen', hsn: 'HSN003' });
+    const res = await request(app)
+      .get('/api/medicines/search?prefix=Para')
+      .set('Authorization', `Bearer ${token}`);
+    expect(res.status).toBe(200);
+    expect(Array.isArray(res.body)).toBe(true);
+    expect(res.body.length).toBeLessThanOrEqual(15);
+    expect(res.body[0].name).toMatch(/^Para/i);
+  });
+
+  it('should return all medicines matching prefix (smart search all)', async () => {
+    await request(app)
+      .post('/api/medicines/master')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ name: 'Paracetamol', hsn: 'HSN001' });
+    await request(app)
+      .post('/api/medicines/master')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ name: 'Paracip', hsn: 'HSN002' });
+    await request(app)
+      .post('/api/medicines/master')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ name: 'Ibuprofen', hsn: 'HSN003' });
+    const res = await request(app)
+      .get('/api/medicines/searchall?prefix=Para')
+      .set('Authorization', `Bearer ${token}`);
+    expect(res.status).toBe(200);
+    expect(Array.isArray(res.body)).toBe(true);
+    expect(res.body.length).toBeGreaterThanOrEqual(2);
+    expect(res.body[0].name).toMatch(/^Para/i);
+  });
+
+  it('should not allow duplicate medicine names', async () => {
+    await request(app)
+      .post('/api/medicines/master')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ name: 'UniqueMed', hsn: 'HSN123' });
+    const res = await request(app)
+      .post('/api/medicines/master')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ name: 'UniqueMed', hsn: 'HSN999' });
+    expect(res.status).toBe(400);
+  });
+
+  it('should return 400 for invalid content IDs', async () => {
+    const res = await request(app)
+      .post('/api/medicines/master')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ name: 'InvalidContentMed', hsn: 'HSN123', contents: [99999] });
+    expect(res.status).toBe(400);
+  });
+
+  it('should return 400 for missing required fields', async () => {
+    const res = await request(app)
+      .post('/api/medicines/master')
+      .set('Authorization', `Bearer ${token}`)
+      .send({ hsn: 'HSN123' });
+    expect(res.status).toBe(400);
+  });
+
+  it('should list all medicines', async () => {
+    await createMedicine(account.accountId, 'Paracetamol', 'HSN001');
+    await createMedicine(account.accountId, 'Ibuprofen', 'HSN002');
+    const res = await request(app)
+      .get('/api/medicines/master')
+      .set('Authorization', `Bearer ${token}`);
+    expect(res.status).toBe(200);
     expect(Array.isArray(res.body.medicines)).toBe(true);
     expect(res.body.medicines.length).toBeGreaterThanOrEqual(2);
+    expect(res.body.medicines[0]).toHaveProperty('medicineId');
+    expect(res.body.medicines[0]).toHaveProperty('name');
   });
 
-  it('GET /api/medicines?q=Med filters by name', async () => {
+  it('should update a medicine', async () => {
+    const id = await createMedicine(account.accountId, 'Aspirin', 'HSN003');
     const res = await request(app)
-      .get(`/api/medicines?q=${masterMedName1}`)
-      .set('Authorization', `Bearer ${userToken}`)
-      .expect(200);
-    expect(res.body.medicines.length).toBeGreaterThanOrEqual(1);
-    expect(res.body.medicines[0].medicine.name).toBe(masterMedName1);
+      .put(`/api/medicines/master/${id}`)
+      .set('Authorization', `Bearer ${token}`)
+      .send({ name: 'Aspirin Updated', hsn: 'HSN004' });
+    expect(res.status).toBe(200);
+    expect(res.body.name).toBe('Aspirin Updated');
+    expect(res.body.hsn).toBe('HSN004');
   });
 
-  it('PUT /api/medicines/:id updates stock price', async () => {
+  it('should delete a medicine', async () => {
+    const id = await createMedicine(account.accountId, 'ToDelete', 'HSN999');
     const res = await request(app)
-      .put(`/api/medicines/${stock1Id}`)
-      .set('Authorization', `Bearer ${userToken}`)
-      .send({ price: '13.00' })
-      .expect(200);
-    expect(res.body.price).toBe('13.00');
-  });
-
-  it('DELETE /api/medicines/:id removes stock entry', async () => {
-    await request(app)
-      .delete(`/api/medicines/${stock2Id}`)
-      .set('Authorization', `Bearer ${userToken}`)
-      .expect(204);
-    const list = await request(app)
-      .get('/api/medicines')
-      .set('Authorization', `Bearer ${userToken}`)
-      .expect(200);
+      .delete(`/api/medicines/master/${id}`)
+      .set('Authorization', `Bearer ${token}`);
+    expect(res.status).toBe(204);
+    // Should not find it anymore
+    const listRes = await request(app)
+      .get('/api/medicines/master')
+      .set('Authorization', `Bearer ${token}`);
     expect(
-      list.body.medicines.find((s: any) => s.medicineStockId === stock2Id),
+      listRes.body.medicines.find((m) => m.medicineId === id),
     ).toBeUndefined();
   });
 });
-
-// Add tests for:
-// - Creating a master medicine
-// - Creating a medicine stock referencing a master medicine
-// - Creating a customer
-// - Creating a bill with credit flag and customer reference
-// - Ensuring only name is required for patient

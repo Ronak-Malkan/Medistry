@@ -9,6 +9,65 @@ interface AuthRequest extends Request {
 const router = Router();
 const incomingBillService = new IncomingBillService();
 
+/**
+ * @swagger
+ * /api/incoming-bills:
+ *   get:
+ *     summary: List all incoming bills
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: List of incoming bills
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/IncomingBill'
+ *   post:
+ *     summary: Create a new incoming bill
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               bill:
+ *                 $ref: '#/components/schemas/IncomingBill'
+ *               entries:
+ *                 type: array
+ *                 items:
+ *                   $ref: '#/components/schemas/IncomingBillEntry'
+ *     responses:
+ *       201:
+ *         description: Created incoming bill
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/IncomingBill'
+ * /api/incoming-bills/{id}:
+ *   get:
+ *     summary: Get incoming bill by ID
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: integer
+ *     responses:
+ *       200:
+ *         description: Incoming bill details
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/IncomingBill'
+ */
 // Create incoming bill
 router.post(
   '/',

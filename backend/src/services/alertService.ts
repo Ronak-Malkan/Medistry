@@ -10,9 +10,10 @@ import { medicineStockRepository } from '../repositories/medicineStockRepository
  */
 export async function removeExpiredMedicines() {
   const today = new Date();
+  const todayStr = today.toISOString().slice(0, 10);
   // find all expired entries
   const expired = await medicineStockRepository.find({
-    where: { expiryDate: LessThan(today) },
+    where: { expiryDate: LessThan(todayStr) },
     relations: ['medicine'],
   });
   // group by account
@@ -28,7 +29,7 @@ export async function removeExpiredMedicines() {
   for (const [accountId, names] of byAccount.entries()) {
     await medicineStockRepository.delete({
       accountId,
-      expiryDate: LessThan(today),
+      expiryDate: LessThan(todayStr),
     });
 
     const account = await accountRepository.findOneBy({ accountId });
@@ -90,8 +91,9 @@ export async function checkLowStockThreshold() {
 }
 
 export async function getExpiredStocks(today: Date) {
+  const todayStr = today.toISOString().slice(0, 10);
   return medicineStockRepository.find({
-    where: { expiryDate: LessThan(today) },
+    where: { expiryDate: LessThan(todayStr) },
     relations: ['medicine'],
   });
 }

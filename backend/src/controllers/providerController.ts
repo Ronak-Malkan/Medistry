@@ -4,6 +4,7 @@ import {
   createProvider,
   updateProvider,
   deleteProvider,
+  smartSearchProviders,
 } from '../services/providerService';
 import { requireRole } from '../middleware/auth';
 import { logger } from '../utils/logger';
@@ -14,6 +15,69 @@ interface ReqWithAuth extends Request {
 
 const router = Router();
 
+/**
+ * @swagger
+ * /api/providers:
+ *   get:
+ *     summary: List all providers (with optional search)
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: q
+ *         schema:
+ *           type: string
+ *         description: Partial name to search
+ *     responses:
+ *       200:
+ *         description: List of providers
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 providers:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/Provider'
+ *   post:
+ *     summary: Create a new provider
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/Provider'
+ *     responses:
+ *       201:
+ *         description: Created provider
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Provider'
+ * /api/providers/search:
+ *   get:
+ *     summary: Smart search for providers (top 10 prefix matches)
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: q
+ *         schema:
+ *           type: string
+ *         description: Prefix to search
+ *     responses:
+ *       200:
+ *         description: List of matching providers
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/Provider'
+ */
 // GET /api/providers?q=
 router.get(
   '/',
@@ -52,6 +116,23 @@ router.post(
     } catch (err: unknown) {
       logger.error('Create provider error', { error: err });
       res.status(400).json({ message: (err as Error).message });
+    }
+  },
+);
+
+// Smart search endpoint
+router.get(
+  '/search',
+  requireRole('app_admin'),
+  async (req: Request, res: Response) => {
+    const accountId = (req as ReqWithAuth).auth.accountId;
+    const q = typeof req.query.q === 'string' ? req.query.q : '';
+    try {
+      const results = await smartSearchProviders(accountId, q, 10);
+      res.status(200).json(results);
+    } catch (err: unknown) {
+      logger.error('Provider smart search error', { error: err });
+      res.status(500).json({ message: (err as Error).message });
     }
   },
 );

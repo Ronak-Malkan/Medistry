@@ -53,3 +53,14 @@ export async function deleteProvider(
   const res = await providerRepository.delete({ providerId, accountId });
   if (res.affected === 0) throw new Error('Provider not found');
 }
+
+export async function smartSearchProviders(
+  accountId: number,
+  q: string,
+  limit: number,
+): Promise<Provider[]> {
+  return providerRepository.find({
+    where: { accountId, name: ILike(`%${q}%`) },
+    take: limit,
+  });
+}

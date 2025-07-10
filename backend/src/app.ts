@@ -13,7 +13,11 @@ import incomingBillRouter from './controllers/incomingBillController';
 import incomingStockRouter from './controllers/incomingStockController';
 import sellingLogRouter from './controllers/sellingLogController';
 import medicineContentsRouter from './controllers/medicineContentsController';
+import patientRouter from './controllers/patientController';
+import medicineStockRouter from './controllers/medicineStockController';
 import { jwtMiddleware } from './middleware/auth';
+import swaggerUi from 'swagger-ui-express';
+import swaggerJSDoc from 'swagger-jsdoc';
 
 export const app = express();
 
@@ -36,3 +40,34 @@ app.use('/api/incoming-bills', incomingBillRouter);
 app.use('/api/incoming-stocks', incomingStockRouter);
 app.use('/api/selling-logs', sellingLogRouter);
 app.use('/api/medicine-contents', medicineContentsRouter);
+app.use('/api/patients', patientRouter);
+app.use('/api/medicine-stock', medicineStockRouter);
+
+const swaggerDefinition = {
+  openapi: '3.0.0',
+  info: {
+    title: 'Medistry API',
+    version: '1.0.0',
+    description:
+      'API documentation for Medistry backend (current endpoints only, bill types deferred)',
+  },
+  servers: [{ url: '/api' }],
+  components: {
+    securitySchemes: {
+      bearerAuth: {
+        type: 'http',
+        scheme: 'bearer',
+        bearerFormat: 'JWT',
+      },
+    },
+  },
+  security: [{ bearerAuth: [] }],
+};
+
+const options = {
+  swaggerDefinition,
+  apis: ['./src/controllers/*.ts'],
+};
+const swaggerSpec = swaggerJSDoc(options);
+
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));

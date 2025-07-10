@@ -5,8 +5,8 @@ import { logger } from '../utils/logger';
 interface IncomingStockData {
   medicineId: number;
   batchNumber: string;
-  incomingDate: Date;
-  expiryDate: Date;
+  incomingDate: string;
+  expiryDate: string;
   quantityReceived: number;
   unitCost?: number;
   incomingBillId: number;
@@ -22,8 +22,14 @@ export class IncomingStockService {
       const mappedStock = {
         medicineId: data.medicineId,
         batchNumber: data.batchNumber,
-        incomingDate: data.incomingDate,
-        expiryDate: data.expiryDate,
+        incomingDate:
+          typeof data.incomingDate === 'string'
+            ? data.incomingDate.slice(0, 10)
+            : '',
+        expiryDate:
+          typeof data.expiryDate === 'string'
+            ? data.expiryDate.slice(0, 10)
+            : '',
         quantityAvailable: data.quantityReceived,
         price: data.unitCost?.toString(),
         accountId,
@@ -42,21 +48,14 @@ export class IncomingStockService {
       if (stock) {
         stock.quantityAvailable += mappedStock.quantityAvailable || 0;
         stock.price = mappedStock.price || stock.price;
+        stock.incomingDate = mappedStock.incomingDate;
+        stock.expiryDate = mappedStock.expiryDate;
         stock = await medicineStockRepository.save(stock);
       } else {
         stock = medicineStockRepository.create(mappedStock);
         stock = await medicineStockRepository.save(stock);
       }
       // Create IncomingStock record
-      // Ensure incomingDate and expiryDate are Date objects
-      let incomingDateObj = data.incomingDate;
-      if (typeof incomingDateObj === 'string') {
-        incomingDateObj = new Date(incomingDateObj);
-      }
-      let expiryDateObj = data.expiryDate;
-      if (typeof expiryDateObj === 'string') {
-        expiryDateObj = new Date(expiryDateObj);
-      }
       const incomingStock = incomingStockRepository.create({
         account: { accountId } as Partial<{ accountId: number }>,
         incomingBill: { incoming_bill_id: data.incomingBillId } as Partial<{
@@ -66,12 +65,12 @@ export class IncomingStockService {
           medicineId: number;
         }>,
         batch_number: data.batchNumber,
-        incoming_date: incomingDateObj.toISOString().split('T')[0],
+        incoming_date: mappedStock.incomingDate,
         quantity_received: data.quantityReceived,
         unit_cost: data.unitCost || 0,
         discount_line: data.discountLine || 0,
         free_quantity: data.freeQuantity || 0,
-        expiry_date: expiryDateObj.toISOString().split('T')[0],
+        expiry_date: mappedStock.expiryDate,
       });
       await incomingStockRepository.save(incomingStock);
       logger.info('Returning stock:', stock);

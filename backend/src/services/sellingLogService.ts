@@ -36,15 +36,11 @@ export class SellingLogService {
     const discountLine = data.discountLine ?? data.discount_line ?? 0;
     const unitPriceInclusiveGst =
       data.unitPriceInclusiveGst ?? data.unit_price_inclusive_gst;
-    // Convert expiryDate to Date if needed
-    let expiryDate: Date | undefined = undefined;
+    // Convert expiryDate to string if needed
+    let expiryDate: string | undefined = undefined;
     if (expiryDateRaw) {
       if (typeof expiryDateRaw === 'string') {
-        expiryDate = new Date(expiryDateRaw);
-      } else if (
-        Object.prototype.toString.call(expiryDateRaw) === '[object Date]'
-      ) {
-        expiryDate = expiryDateRaw as Date;
+        expiryDate = expiryDateRaw.slice(0, 10);
       }
     }
     // Check available quantity in the correct batch
@@ -81,7 +77,7 @@ export class SellingLogService {
       discount_line: discountLine,
       unit_price_inclusive_gst: unitPriceInclusiveGst || 0,
       hsn_code,
-      expiry_date: expiryDate ? expiryDate.toISOString().split('T')[0] : '',
+      expiry_date: expiryDate || '',
     });
     return sellingLogRepository.save(log);
   }
