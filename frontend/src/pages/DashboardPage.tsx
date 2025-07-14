@@ -82,7 +82,7 @@ export default function DashboardPage() {
   else if (user?.role === "app_admin") welcomeText = "Welcome, App Admin!";
 
   return (
-    <div className="min-h-screen w-full">
+    <div className="flex-1 w-full">
       <div className="w-full max-w-5xl mx-auto px-4 sm:px-6 overflow-x-hidden">
         <h1 className="text-3xl font-extrabold mb-2 text-teal-700 tracking-tight">
           Dashboard

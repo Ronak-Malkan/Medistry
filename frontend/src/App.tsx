@@ -11,6 +11,8 @@ import MedicinesPage from "./pages/MedicinesPage";
 import LandingPage from "./pages/LandingPage";
 import SignUpPage from "./pages/SignUpPage";
 import ProtectedLayout from "./components/ProtectedLayout";
+import PurchaseInvoicePage from "./pages/PurchaseInvoicePage";
+import SalesInvoicePage from "./pages/SalesInvoicePage";
 
 function ProtectedRoute() {
   const { token, validateToken, loading } = useAuth();
@@ -131,6 +133,11 @@ export default function App() {
             <Route path="/users" element={<UsersPage />} />
             <Route path="/contents" element={<ContentsPage />} />
             <Route path="/medicines" element={<MedicinesPage />} />
+            <Route
+              path="/purchase-invoices"
+              element={<PurchaseInvoicePage />}
+            />
+            <Route path="/sales-invoices" element={<SalesInvoicePage />} />
           </Route>
         </Route>
 

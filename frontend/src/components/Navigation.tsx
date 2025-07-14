@@ -2,7 +2,16 @@ import React, { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 
-const navLinks = [
+// 1. Remove navLinks and links logic.
+// 2. Hardcode the sidebar and drawer structure as per the finalized sidebar:
+//    - Dashboard (standalone)
+//    - Master (collapsible) with Medicines, Patients, Customers, Providers, Contents
+//    - Inventory (standalone)
+//    - Invoices (Purchase Invoice, Sales Invoice)
+// 3. Remove Accounts and Users from the sidebar.
+// 4. Do not alter sidebar visibility logic for Accounts page.
+// 5. Match the current theme and UI/UX.
+const sidebarLinks = [
   {
     to: "/dashboard",
     label: "Dashboard",
@@ -14,8 +23,32 @@ const navLinks = [
     roles: ["account_admin", "app_admin"],
   },
   { to: "/contents", label: "Contents", roles: ["account_admin", "app_admin"] },
-  { to: "/users", label: "Users", roles: ["account_admin"] },
-  { to: "/accounts", label: "Account", roles: ["account_admin"] },
+  { to: "/patients", label: "Patients", roles: ["account_admin", "app_admin"] },
+  {
+    to: "/customers",
+    label: "Customers",
+    roles: ["account_admin", "app_admin"],
+  },
+  {
+    to: "/providers",
+    label: "Providers",
+    roles: ["account_admin", "app_admin"],
+  },
+  {
+    to: "/inventory",
+    label: "Inventory",
+    roles: ["account_admin", "app_admin"],
+  },
+  {
+    to: "/purchase-invoices",
+    label: "Purchase Invoices",
+    roles: ["account_admin", "app_admin"],
+  },
+  {
+    to: "/sales-invoices",
+    label: "Sales Invoices",
+    roles: ["account_admin", "app_admin"],
+  },
 ];
 
 export default function Navigation() {
@@ -24,8 +57,10 @@ export default function Navigation() {
   const [drawerOpen, setDrawerOpen] = useState(false);
   const [drawerVisible, setDrawerVisible] = useState(false);
   const [drawerClosing, setDrawerClosing] = useState(false);
+  const [masterDrawerOpen, setMasterDrawerOpen] = useState(false);
+  const [invoicesDrawerOpen, setInvoicesDrawerOpen] = useState(false);
   if (!user) return null;
-  const links = navLinks.filter((l) => l.roles.includes(user.role));
+  // const links = navLinks.filter((l) => l.roles.includes(user.role)); // This line is removed
 
   // Sidebar for desktop
   const sidebar = (
@@ -36,20 +71,172 @@ export default function Navigation() {
         </span>
       </div>
       <ul className="flex-1 flex flex-col gap-2">
-        {links.map((link) => (
-          <li key={link.to}>
-            <Link
-              to={link.to}
-              className={`block px-4 py-2 rounded-lg font-medium transition text-lg ${
-                location.pathname.startsWith(link.to)
-                  ? "bg-teal-600 text-white shadow"
-                  : "text-teal-700 hover:bg-teal-50"
+        <li>
+          <Link
+            to="/dashboard"
+            className={`block px-4 py-2 rounded-lg font-medium transition text-lg ${
+              location.pathname.startsWith("/dashboard")
+                ? "bg-teal-600 text-white shadow"
+                : "text-teal-700 hover:bg-teal-50"
+            }`}
+          >
+            Dashboard
+          </Link>
+        </li>
+        <li>
+          <button
+            className="w-full flex items-center justify-between px-4 py-2 rounded-lg font-medium text-lg text-teal-700 hover:bg-teal-50 focus:outline-none"
+            onClick={() => setMasterDrawerOpen((open) => !open)}
+            aria-expanded={masterDrawerOpen}
+            aria-controls="master-drawer"
+          >
+            <span>Master</span>
+            <svg
+              className={`h-5 w-5 ml-2 transition-transform ${
+                masterDrawerOpen ? "rotate-90" : ""
               }`}
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
             >
-              {link.label}
-            </Link>
-          </li>
-        ))}
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M9 5l7 7-7 7"
+              />
+            </svg>
+          </button>
+          {masterDrawerOpen && (
+            <ul id="master-drawer" className="ml-4 mt-1 flex flex-col gap-1">
+              <li>
+                <Link
+                  to="/medicines"
+                  className={`block px-4 py-2 rounded-lg font-medium transition text-lg ${
+                    location.pathname.startsWith("/medicines")
+                      ? "bg-teal-600 text-white shadow"
+                      : "text-teal-700 hover:bg-teal-50"
+                  }`}
+                >
+                  Medicines
+                </Link>
+              </li>
+              <li>
+                <Link
+                  to="/patients"
+                  className={`block px-4 py-2 rounded-lg font-medium transition text-lg ${
+                    location.pathname.startsWith("/patients")
+                      ? "bg-teal-600 text-white shadow"
+                      : "text-teal-700 hover:bg-teal-50"
+                  }`}
+                >
+                  Patients
+                </Link>
+              </li>
+              <li>
+                <Link
+                  to="/customers"
+                  className={`block px-4 py-2 rounded-lg font-medium transition text-lg ${
+                    location.pathname.startsWith("/customers")
+                      ? "bg-teal-600 text-white shadow"
+                      : "text-teal-700 hover:bg-teal-50"
+                  }`}
+                >
+                  Customers
+                </Link>
+              </li>
+              <li>
+                <Link
+                  to="/providers"
+                  className={`block px-4 py-2 rounded-lg font-medium transition text-lg ${
+                    location.pathname.startsWith("/providers")
+                      ? "bg-teal-600 text-white shadow"
+                      : "text-teal-700 hover:bg-teal-50"
+                  }`}
+                >
+                  Providers
+                </Link>
+              </li>
+              <li>
+                <Link
+                  to="/contents"
+                  className={`block px-4 py-2 rounded-lg font-medium transition text-lg ${
+                    location.pathname.startsWith("/contents")
+                      ? "bg-teal-600 text-white shadow"
+                      : "text-teal-700 hover:bg-teal-50"
+                  }`}
+                >
+                  Contents
+                </Link>
+              </li>
+            </ul>
+          )}
+        </li>
+        <li>
+          <Link
+            to="/inventory"
+            className={`block px-4 py-2 rounded-lg font-medium transition text-lg ${
+              location.pathname.startsWith("/inventory")
+                ? "bg-teal-600 text-white shadow"
+                : "text-teal-700 hover:bg-teal-50"
+            }`}
+          >
+            Inventory
+          </Link>
+        </li>
+        <li>
+          <button
+            className="w-full flex items-center justify-between px-4 py-2 rounded-lg font-medium text-lg text-teal-700 hover:bg-teal-50 focus:outline-none"
+            onClick={() => setInvoicesDrawerOpen((open) => !open)}
+            aria-expanded={invoicesDrawerOpen}
+            aria-controls="invoices-drawer"
+          >
+            <span>Invoices</span>
+            <svg
+              className={`h-5 w-5 ml-2 transition-transform ${
+                invoicesDrawerOpen ? "rotate-90" : ""
+              }`}
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M9 5l7 7-7 7"
+              />
+            </svg>
+          </button>
+          {invoicesDrawerOpen && (
+            <ul id="invoices-drawer" className="ml-4 mt-1 flex flex-col gap-1">
+              <li>
+                <Link
+                  to="/purchase-invoices"
+                  className={`block px-4 py-2 rounded-lg font-medium transition text-lg ${
+                    location.pathname.startsWith("/purchase-invoices")
+                      ? "bg-teal-600 text-white shadow"
+                      : "text-teal-700 hover:bg-teal-50"
+                  }`}
+                >
+                  Purchase Invoice
+                </Link>
+              </li>
+              <li>
+                <Link
+                  to="/sales-invoices"
+                  className={`block px-4 py-2 rounded-lg font-medium transition text-lg ${
+                    location.pathname.startsWith("/sales-invoices")
+                      ? "bg-teal-600 text-white shadow"
+                      : "text-teal-700 hover:bg-teal-50"
+                  }`}
+                >
+                  Sales Invoice
+                </Link>
+              </li>
+            </ul>
+          )}
+        </li>
       </ul>
       <button
         onClick={logout}
@@ -139,7 +326,7 @@ export default function Navigation() {
           </button>
         </div>
         <ul className="flex-1 flex flex-col gap-2">
-          {links.map((link) => (
+          {sidebarLinks.map((link) => (
             <li key={link.to}>
               <Link
                 to={link.to}
