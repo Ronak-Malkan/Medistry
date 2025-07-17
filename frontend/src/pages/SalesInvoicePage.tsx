@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useSearchParams } from "react-router-dom";
 import SuggestionDropdown from "../components/SuggestionDropdown";
 
 // Define Patient type locally for frontend use
@@ -141,9 +142,13 @@ interface SalesInvoicePageProps {
 const SalesInvoicePage: React.FC<SalesInvoicePageProps> = ({
   defaultBillType = "CA-BS",
 }) => {
+  const [searchParams] = useSearchParams();
+  const urlBillType = searchParams.get("billType");
+  const effectiveBillType = urlBillType || defaultBillType;
+
   const [rows, setRows] = useState<MedicineRow[]>([{ ...initialRow }]);
   const [billDetails, setBillDetails] = useState({
-    billType: defaultBillType,
+    billType: effectiveBillType,
     patient: "",
     patientId: 0,
     doctorName: "",

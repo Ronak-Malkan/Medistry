@@ -1,6 +1,8 @@
 import React, { useEffect } from "react";
 import { Routes, Route, Navigate, Outlet, useNavigate } from "react-router-dom";
 import { useAuth } from "./context/AuthContext";
+import { shortcutManager, SHORTCUTS } from "./utils/shortcuts";
+import { useShortcutsHelp } from "./components/ShortcutsHelp";
 
 import LoginPage from "./pages/LoginPage";
 import DashboardPage from "./pages/DashboardPage";
@@ -101,9 +103,63 @@ function RoleProtectedRoute({
   return <>{children}</>;
 }
 
+// Component to handle global shortcuts
+function GlobalShortcuts() {
+  const navigate = useNavigate();
+  const { openHelp, isOpen, setIsOpen } = useShortcutsHelp();
+
+  useEffect(() => {
+    console.log("Registering shortcuts..."); // Debug log
+
+    // Register global shortcuts
+    shortcutManager.registerShortcut({
+      ...SHORTCUTS.HELP,
+      action: () => {
+        console.log("Help shortcut triggered!"); // Debug log
+        setIsOpen(true);
+      },
+    });
+
+    shortcutManager.registerShortcut({
+      ...SHORTCUTS.SALES_INVOICE,
+      action: () => navigate("/sales-invoices"),
+    });
+
+    shortcutManager.registerShortcut({
+      ...SHORTCUTS.PURCHASE_INVOICE,
+      action: () => navigate("/purchase-invoices"),
+    });
+
+    shortcutManager.registerShortcut({
+      ...SHORTCUTS.SALES_RETURN,
+      action: () => navigate("/sales-invoices?billType=CA-SR-BS"),
+    });
+
+    // Register alternative shortcut for Mac users (Ctrl+R)
+    if (SHORTCUTS.SALES_RETURN_ALT) {
+      shortcutManager.registerShortcut({
+        ...SHORTCUTS.SALES_RETURN_ALT,
+        action: () => navigate("/sales-invoices?billType=CA-SR-BS"),
+      });
+    }
+
+    console.log("All shortcuts registered"); // Debug log
+
+    // Cleanup on unmount
+    return () => {
+      shortcutManager.clearAll();
+    };
+  }, [navigate, openHelp]);
+
+  return null;
+}
+
 export default function App() {
+  const { ShortcutsHelpComponent } = useShortcutsHelp();
+
   return (
     <div className="min-h-screen w-full bg-gradient-to-br from-teal-50 via-blue-50 to-green-100">
+      <GlobalShortcuts />
       <Routes>
         {/* Public */}
         <Route path="/" element={<LandingPage />} />
@@ -144,6 +200,8 @@ export default function App() {
         {/* Fallback */}
         <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
+      {/* Shortcuts Help Modal */}
+      <ShortcutsHelpComponent />
     </div>
   );
 }
