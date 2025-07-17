@@ -4,12 +4,14 @@ import ReactDOM from "react-dom";
 interface SuggestionDropdownProps<T> {
   value: string;
   onChange: (value: string, item?: T) => void;
-  fetchSuggestions: (prefix: string) => Promise<T[]>;
+  fetchSuggestions?: (prefix: string) => Promise<T[]>;
+  staticOptions?: T[];
   placeholder?: string;
   onAddNew?: (input: string) => void;
   label?: string;
   disabled?: boolean;
   getLabel: (item: T) => string;
+  renderItem?: (item: T, highlighted: boolean) => React.ReactNode;
   noResultsRender?: () => React.ReactNode;
   inputClassName?: string;
   inputId?: string;
@@ -19,11 +21,13 @@ function SuggestionDropdown<T extends { [key: string]: any }>({
   value,
   onChange,
   fetchSuggestions,
+  staticOptions,
   placeholder,
   onAddNew,
   label,
   disabled,
   getLabel,
+  renderItem,
   noResultsRender,
   inputClassName,
   inputId,
@@ -42,6 +46,20 @@ function SuggestionDropdown<T extends { [key: string]: any }>({
 
   useEffect(() => {
     if (!showDropdown) return;
+
+    if (staticOptions) {
+      // Filter static options based on input
+      const filtered = staticOptions.filter((option) =>
+        getLabel(option).toLowerCase().includes(input.toLowerCase())
+      );
+      setSuggestions(filtered);
+      setHighlighted(0);
+      setLoading(false);
+      return;
+    }
+
+    if (!fetchSuggestions) return;
+
     let active = true;
     setLoading(true);
     const handler = setTimeout(() => {
@@ -57,7 +75,7 @@ function SuggestionDropdown<T extends { [key: string]: any }>({
       active = false;
       clearTimeout(handler);
     };
-  }, [input, fetchSuggestions, showDropdown]);
+  }, [input, fetchSuggestions, staticOptions, showDropdown, getLabel]);
 
   useEffect(() => {
     if (showDropdown && inputRef.current) {
@@ -126,7 +144,9 @@ function SuggestionDropdown<T extends { [key: string]: any }>({
             onMouseDown={() => handleSelect(item)}
             onMouseEnter={() => setHighlighted(idx)}
           >
-            {getLabel(item)}
+            {renderItem
+              ? renderItem(item, idx === highlighted)
+              : getLabel(item)}
           </div>
         ))
       ) : noResultsRender ? (

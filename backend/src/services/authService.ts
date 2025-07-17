@@ -31,12 +31,12 @@ export async function loginUser(
 ): Promise<string> {
   const user = await userRepository.findOneBy({ username });
   if (!user) {
-    throw new Error('Invalid credentials');
+    throw new Error('Invalid credentials, no user found');
   }
 
   const valid = await bcrypt.compare(password, user.passwordHash);
   if (!valid) {
-    throw new Error('Invalid credentials');
+    throw new Error('Invalid credentials, password does not match');
   }
 
   return jwt.sign(
