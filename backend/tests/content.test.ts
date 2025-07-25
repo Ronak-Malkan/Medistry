@@ -39,7 +39,9 @@ const appAdmin = {
 
 beforeAll(async () => {
   await AppDataSource.initialize();
-  await AppDataSource.synchronize(true);
+  if (process.env.NODE_ENV === 'test') {
+    await AppDataSource.synchronize(true); // Reset test DB between runs
+  }
 
   // 1) Register company → returns account_admin token
   const reg = await request(app)

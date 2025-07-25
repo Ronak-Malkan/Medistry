@@ -60,7 +60,17 @@ export async function smartSearchProviders(
   limit: number,
 ): Promise<Provider[]> {
   return providerRepository.find({
-    where: { accountId, name: ILike(`%${q}%`) },
+    where: { accountId, name: ILike(`${q}%`) },
     take: limit,
+  });
+}
+
+export async function smartSearchAllProviders(
+  accountId: number,
+  q: string,
+): Promise<Provider[]> {
+  return providerRepository.find({
+    where: { accountId, name: ILike(`${q}%`) },
+    order: { name: 'ASC' },
   });
 }

@@ -24,7 +24,9 @@ function parseJwt<T>(token: string): T {
 beforeAll(async () => {
   await AppDataSource.initialize();
   // drop existing tables and re-sync schema
-  await AppDataSource.synchronize(true);
+  if (process.env.NODE_ENV === 'test') {
+    await AppDataSource.synchronize(true); // Reset test DB between runs
+  }
 }, 20000);
 
 afterAll(async () => {

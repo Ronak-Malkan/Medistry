@@ -24,7 +24,6 @@ const service = new MedicineService();
  *                   type: array
  *                   items:
  *                     $ref: '#/components/schemas/Medicine'
- * /api/medicines/master:
  *   post:
  *     summary: Create a new medicine
  *     security:

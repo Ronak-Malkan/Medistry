@@ -1,23 +1,26 @@
 import React, { useState, useEffect } from "react";
-import SuggestionDropdown from "../components/SuggestionDropdown";
 
 // Types
-interface Content {
-  contentId: number;
+interface Provider {
+  providerId: number;
   name: string;
+  contactEmail: string;
+  contactPhone: string;
   createdAt: string;
   updatedAt: string;
 }
 
-interface ContentFormData {
+interface ProviderFormData {
   name: string;
+  contactEmail: string;
+  contactPhone: string;
 }
 
 // API functions
-async function fetchContents(prefix?: string) {
+async function fetchProviders(prefix?: string) {
   const url = prefix
-    ? `/api/contents/search?prefix=${encodeURIComponent(prefix)}`
-    : "/api/contents";
+    ? `/api/providers/search?q=${encodeURIComponent(prefix)}`
+    : "/api/providers";
 
   const res = await fetch(url, {
     credentials: "include",
@@ -27,11 +30,11 @@ async function fetchContents(prefix?: string) {
   });
   if (!res.ok) return [];
   const data = await res.json();
-  return prefix ? data : data.contents || [];
+  return prefix ? data : data.providers || [];
 }
 
-async function createContent(data: ContentFormData) {
-  const res = await fetch("/api/contents", {
+async function createProvider(data: ProviderFormData) {
+  const res = await fetch("/api/providers", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -41,12 +44,12 @@ async function createContent(data: ContentFormData) {
     body: JSON.stringify(data),
   });
   if (!res.ok)
-    throw new Error((await res.json()).message || "Failed to create content");
+    throw new Error((await res.json()).message || "Failed to create provider");
   return await res.json();
 }
 
-async function updateContent(id: number, data: ContentFormData) {
-  const res = await fetch(`/api/contents/${id}`, {
+async function updateProvider(id: number, data: Partial<ProviderFormData>) {
+  const res = await fetch(`/api/providers/${id}`, {
     method: "PUT",
     headers: {
       "Content-Type": "application/json",
@@ -56,46 +59,48 @@ async function updateContent(id: number, data: ContentFormData) {
     body: JSON.stringify(data),
   });
   if (!res.ok)
-    throw new Error((await res.json()).message || "Failed to update content");
+    throw new Error((await res.json()).message || "Failed to update provider");
   return await res.json();
 }
 
-async function deleteContent(id: number) {
-  const res = await fetch(`/api/contents/${id}`, {
+async function deleteProvider(id: number) {
+  const res = await fetch(`/api/providers/${id}`, {
     method: "DELETE",
     headers: {
       Authorization: `Bearer ${localStorage.getItem("medistry_jwt")}`,
     },
     credentials: "include",
   });
-  if (!res.ok) throw new Error("Failed to delete content");
+  if (!res.ok) throw new Error("Failed to delete provider");
 }
 
-export default function ContentsPage() {
-  const [contents, setContents] = useState<Content[]>([]);
+export default function ProvidersPage() {
+  const [providers, setProviders] = useState<Provider[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [showAddModal, setShowAddModal] = useState(false);
-  const [editingContent, setEditingContent] = useState<Content | null>(null);
-  const [formData, setFormData] = useState<ContentFormData>({
+  const [editingProvider, setEditingProvider] = useState<Provider | null>(null);
+  const [formData, setFormData] = useState<ProviderFormData>({
     name: "",
+    contactEmail: "",
+    contactPhone: "",
   });
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
-  // Load contents
+  // Load providers
   useEffect(() => {
-    loadContents();
+    loadProviders();
   }, []);
 
-  const loadContents = async () => {
+  const loadProviders = async () => {
     setLoading(true);
     try {
-      const data = await fetchContents(searchTerm);
-      setContents(data);
+      const data = await fetchProviders(searchTerm);
+      setProviders(data);
     } catch (err) {
-      setError("Failed to load contents");
+      setError("Failed to load providers");
     } finally {
       setLoading(false);
     }
@@ -107,10 +112,10 @@ export default function ContentsPage() {
     setSearchTerm(prefix);
     setLoading(true);
     try {
-      const data = await fetchContents(prefix);
-      setContents(data);
+      const data = await fetchProviders(prefix);
+      setProviders(data);
     } catch (err) {
-      setError("Failed to search contents");
+      setError("Failed to search providers");
     } finally {
       setLoading(false);
     }
@@ -118,27 +123,31 @@ export default function ContentsPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.name.trim()) {
-      setError("Name is required");
+    if (
+      !formData.name.trim() ||
+      !formData.contactEmail.trim() ||
+      !formData.contactPhone.trim()
+    ) {
+      setError("Name, email, and phone are required");
       return;
     }
 
     setSubmitting(true);
     setError(null);
     try {
-      if (editingContent) {
-        await updateContent(editingContent.contentId, formData);
-        setSuccess("Content updated successfully!");
+      if (editingProvider) {
+        await updateProvider(editingProvider.providerId, formData);
+        setSuccess("Provider updated successfully!");
       } else {
-        await createContent(formData);
-        setSuccess("Content created successfully!");
+        await createProvider(formData);
+        setSuccess("Provider created successfully!");
       }
 
       // Reset form and reload
-      setFormData({ name: "" });
-      setEditingContent(null);
+      setFormData({ name: "", contactEmail: "", contactPhone: "" });
+      setEditingProvider(null);
       setShowAddModal(false);
-      loadContents();
+      loadProviders();
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -146,29 +155,31 @@ export default function ContentsPage() {
     }
   };
 
-  const handleEdit = (content: Content) => {
-    setEditingContent(content);
+  const handleEdit = (provider: Provider) => {
+    setEditingProvider(provider);
     setFormData({
-      name: content.name,
+      name: provider.name,
+      contactEmail: provider.contactEmail,
+      contactPhone: provider.contactPhone,
     });
     setShowAddModal(true);
   };
 
-  const handleDelete = async (content: Content) => {
-    if (!confirm(`Are you sure you want to delete "${content.name}"?`)) return;
+  const handleDelete = async (provider: Provider) => {
+    if (!confirm(`Are you sure you want to delete "${provider.name}"?`)) return;
 
     try {
-      await deleteContent(content.contentId);
-      setSuccess("Content deleted successfully!");
-      loadContents();
+      await deleteProvider(provider.providerId);
+      setSuccess("Provider deleted successfully!");
+      loadProviders();
     } catch (err: any) {
       setError(err.message);
     }
   };
 
   const resetForm = () => {
-    setFormData({ name: "" });
-    setEditingContent(null);
+    setFormData({ name: "", contactEmail: "", contactPhone: "" });
+    setEditingProvider(null);
     setError(null);
     setSuccess(null);
   };
@@ -179,7 +190,7 @@ export default function ContentsPage() {
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6">
           <h1 className="text-3xl font-extrabold mb-2 text-teal-700 tracking-tight">
-            Contents
+            Providers
           </h1>
           <button
             onClick={() => {
@@ -188,7 +199,7 @@ export default function ContentsPage() {
             }}
             className="bg-teal-600 text-white px-4 py-2 rounded font-semibold hover:bg-teal-700 transition"
           >
-            + Add Content
+            + Add Provider
           </button>
         </div>
 
@@ -196,12 +207,20 @@ export default function ContentsPage() {
         <div className="bg-white rounded-xl shadow-md border border-blue-100 p-6 mb-6">
           <div className="flex flex-col sm:flex-row gap-4">
             <div className="flex-1">
+              {/* <SuggestionDropdown
+                value={searchTerm}
+                onChange={(val) => handleSearch(val)}
+                fetchSuggestions={fetchProviders}
+                placeholder="Search providers..."
+                getLabel={(provider: Provider) => provider.name}
+                inputClassName="w-full border rounded px-3 py-2"
+              /> */}
               <div className="relative w-full">
                 <input
                   className="w-full border rounded px-3 py-2"
                   value={searchTerm}
                   onChange={handleSearch}
-                  placeholder="Search contents..."
+                  placeholder="Search providers..."
                   autoComplete="off"
                 />
               </div>
@@ -221,7 +240,7 @@ export default function ContentsPage() {
           </div>
         )}
 
-        {/* Contents Table */}
+        {/* Providers Table */}
         <div className="bg-white rounded-xl shadow-md border border-blue-100 overflow-hidden">
           {loading ? (
             <div className="flex items-center justify-center p-8">
@@ -255,10 +274,13 @@ export default function ContentsPage() {
                       Name
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Created
+                      Email
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Updated
+                      Phone
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Created
                     </th>
                     <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Actions
@@ -266,28 +288,35 @@ export default function ContentsPage() {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {contents.map((content) => (
-                    <tr key={content.contentId} className="hover:bg-gray-50">
+                  {providers.map((provider) => (
+                    <tr key={provider.providerId} className="hover:bg-gray-50">
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="text-sm font-medium text-gray-900">
-                          {content.name}
+                          {provider.name}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm text-gray-500">
+                          {provider.contactEmail}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm text-gray-500">
+                          {provider.contactPhone}
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {new Date(content.createdAt).toLocaleDateString()}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {new Date(content.updatedAt).toLocaleDateString()}
+                        {new Date(provider.createdAt).toLocaleDateString()}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                         <button
-                          onClick={() => handleEdit(content)}
+                          onClick={() => handleEdit(provider)}
                           className="text-teal-600 hover:text-teal-900 mr-3"
                         >
                           Edit
                         </button>
                         <button
-                          onClick={() => handleDelete(content)}
+                          onClick={() => handleDelete(provider)}
                           className="text-red-600 hover:text-red-900"
                         >
                           Delete
@@ -297,9 +326,9 @@ export default function ContentsPage() {
                   ))}
                 </tbody>
               </table>
-              {contents.length === 0 && (
+              {providers.length === 0 && (
                 <div className="text-center py-8 text-gray-500">
-                  No contents found
+                  No providers found
                 </div>
               )}
             </div>
@@ -313,13 +342,13 @@ export default function ContentsPage() {
           <div className="bg-white rounded-xl shadow-xl w-full max-w-md">
             <div className="p-6">
               <h2 className="text-2xl font-bold mb-4 text-teal-700">
-                {editingContent ? "Edit Content" : "Add New Content"}
+                {editingProvider ? "Edit Provider" : "Add New Provider"}
               </h2>
 
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
                   <label className="block text-gray-700 font-semibold mb-1">
-                    Content Name *
+                    Provider Name *
                   </label>
                   <input
                     type="text"
@@ -328,7 +357,39 @@ export default function ContentsPage() {
                       setFormData({ ...formData, name: e.target.value })
                     }
                     className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-teal-500"
-                    placeholder="Enter content name"
+                    placeholder="Enter provider name"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-gray-700 font-semibold mb-1">
+                    Contact Email *
+                  </label>
+                  <input
+                    type="email"
+                    value={formData.contactEmail}
+                    onChange={(e) =>
+                      setFormData({ ...formData, contactEmail: e.target.value })
+                    }
+                    className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-teal-500"
+                    placeholder="Enter contact email"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-gray-700 font-semibold mb-1">
+                    Contact Phone *
+                  </label>
+                  <input
+                    type="tel"
+                    value={formData.contactPhone}
+                    onChange={(e) =>
+                      setFormData({ ...formData, contactPhone: e.target.value })
+                    }
+                    className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-teal-500"
+                    placeholder="Enter contact phone"
                     required
                   />
                 </div>
@@ -341,7 +402,7 @@ export default function ContentsPage() {
                   >
                     {submitting
                       ? "Saving..."
-                      : editingContent
+                      : editingProvider
                       ? "Update"
                       : "Create"}
                   </button>

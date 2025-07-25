@@ -52,7 +52,7 @@ router.post('/login', async (req, res) => {
     const token = await loginUser(username, password);
     res.status(200).json({ token });
   } catch (err: unknown) {
-    logger.error('Login error', { error: err });
+    logger.error('Login error:', err);
     const message = err instanceof Error ? err.message : 'Login failed';
     res.status(401).json({ message });
   }

@@ -15,6 +15,7 @@ import sellingLogRouter from './controllers/sellingLogController';
 import medicineContentsRouter from './controllers/medicineContentsController';
 import patientRouter from './controllers/patientController';
 import medicineStockRouter from './controllers/medicineStockController';
+import customerRouter from './controllers/customerController';
 import { jwtMiddleware } from './middleware/auth';
 import swaggerUi from 'swagger-ui-express';
 import swaggerJSDoc from 'swagger-jsdoc';
@@ -42,6 +43,7 @@ app.use('/api/selling-logs', sellingLogRouter);
 app.use('/api/medicine-contents', medicineContentsRouter);
 app.use('/api/patients', patientRouter);
 app.use('/api/medicine-stock', medicineStockRouter);
+app.use('/api/customers', customerRouter);
 
 const swaggerDefinition = {
   openapi: '3.0.0',

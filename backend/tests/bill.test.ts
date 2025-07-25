@@ -454,6 +454,53 @@ describe('Patient Smart Search API', () => {
     const res = await request(app).get('/api/patients/search?q=john');
     expect(res.status).toBe(401);
   });
+
+  it('should return all patients matching partial name (searchall)', async () => {
+    // Create patients
+    await request(app)
+      .post('/api/patients')
+      .set('Authorization', `Bearer ${patientToken}`)
+      .send({ name: 'SearchAll Patient 1' });
+    await request(app)
+      .post('/api/patients')
+      .set('Authorization', `Bearer ${patientToken}`)
+      .send({ name: 'SearchAll Patient 2' });
+    await request(app)
+      .post('/api/patients')
+      .set('Authorization', `Bearer ${patientToken}`)
+      .send({ name: 'SearchAll Patient 3' });
+    await request(app)
+      .post('/api/patients')
+      .set('Authorization', `Bearer ${patientToken}`)
+      .send({ name: 'SearchAll Patient 4' });
+    await request(app)
+      .post('/api/patients')
+      .set('Authorization', `Bearer ${patientToken}`)
+      .send({ name: 'SearchAll Patient 5' });
+
+    // Search for "SearchAll" - should return all 5
+    const res = await request(app)
+      .get('/api/patients/searchall?q=SearchAll')
+      .set('Authorization', `Bearer ${patientToken}`);
+    expect(res.status).toBe(200);
+    expect(Array.isArray(res.body)).toBe(true);
+    expect(res.body.length).toBeGreaterThanOrEqual(5);
+    const names = res.body.map((p: any) => p.name.toLowerCase());
+    expect(names).toEqual(
+      expect.arrayContaining([
+        'searchall patient 1',
+        'searchall patient 2',
+        'searchall patient 3',
+        'searchall patient 4',
+        'searchall patient 5',
+      ]),
+    );
+  });
+
+  it('should require auth for patient searchall', async () => {
+    const res = await request(app).get('/api/patients/searchall?q=john');
+    expect(res.status).toBe(401);
+  });
 });
 
 describe('Provider Smart Search API', () => {
@@ -524,6 +571,73 @@ describe('Provider Smart Search API', () => {
 
   it('should require auth for provider search', async () => {
     const res = await request(app).get('/api/providers/search?q=alp');
+    expect(res.status).toBe(401);
+  });
+
+  it('should return all providers matching partial name (searchall)', async () => {
+    // Create providers
+    await request(app)
+      .post('/api/providers')
+      .set('Authorization', `Bearer ${providerToken}`)
+      .send({
+        name: 'SearchAll Provider 1',
+        contactEmail: 'sap1@mail.com',
+        contactPhone: '1111',
+      });
+    await request(app)
+      .post('/api/providers')
+      .set('Authorization', `Bearer ${providerToken}`)
+      .send({
+        name: 'SearchAll Provider 2',
+        contactEmail: 'sap2@mail.com',
+        contactPhone: '2222',
+      });
+    await request(app)
+      .post('/api/providers')
+      .set('Authorization', `Bearer ${providerToken}`)
+      .send({
+        name: 'SearchAll Provider 3',
+        contactEmail: 'sap3@mail.com',
+        contactPhone: '3333',
+      });
+    await request(app)
+      .post('/api/providers')
+      .set('Authorization', `Bearer ${providerToken}`)
+      .send({
+        name: 'SearchAll Provider 4',
+        contactEmail: 'sap4@mail.com',
+        contactPhone: '4444',
+      });
+    await request(app)
+      .post('/api/providers')
+      .set('Authorization', `Bearer ${providerToken}`)
+      .send({
+        name: 'SearchAll Provider 5',
+        contactEmail: 'sap5@mail.com',
+        contactPhone: '5555',
+      });
+
+    // Search for "SearchAll" - should return all 5
+    const res = await request(app)
+      .get('/api/providers/searchall?q=SearchAll')
+      .set('Authorization', `Bearer ${providerToken}`);
+    expect(res.status).toBe(200);
+    expect(Array.isArray(res.body)).toBe(true);
+    expect(res.body.length).toBeGreaterThanOrEqual(5);
+    const names = res.body.map((p: any) => p.name.toLowerCase());
+    expect(names).toEqual(
+      expect.arrayContaining([
+        'searchall provider 1',
+        'searchall provider 2',
+        'searchall provider 3',
+        'searchall provider 4',
+        'searchall provider 5',
+      ]),
+    );
+  });
+
+  it('should require auth for provider searchall', async () => {
+    const res = await request(app).get('/api/providers/searchall?q=alp');
     expect(res.status).toBe(401);
   });
 });

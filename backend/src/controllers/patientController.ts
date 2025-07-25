@@ -73,7 +73,7 @@ router.get(
   },
 );
 
-// Smart search endpoint
+// Smart search endpoint (top 10)
 router.get(
   '/search',
   requireRole('app_admin'),
@@ -82,6 +82,22 @@ router.get(
     const q = (req.query.q as string) || '';
     try {
       const results = await patientService.smartSearch(q, accountId, 10);
+      res.json(results);
+    } catch (err) {
+      res.status(500).json({ error: (err as Error).message });
+    }
+  },
+);
+
+// Smart search all endpoint
+router.get(
+  '/searchall',
+  requireRole('app_admin'),
+  async (req: Request, res: Response) => {
+    const { accountId } = (req as AuthRequest).auth;
+    const q = (req.query.q as string) || '';
+    try {
+      const results = await patientService.smartSearchAll(q, accountId);
       res.json(results);
     } catch (err) {
       res.status(500).json({ error: (err as Error).message });

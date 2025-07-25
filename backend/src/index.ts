@@ -5,6 +5,10 @@ import 'dotenv/config';
 
 async function startServer() {
   try {
+    console.log('DEBUG: Environment check on startup:');
+    console.log('DEBUG: JWT_SECRET exists:', !!process.env.JWT_SECRET);
+    console.log('DEBUG: JWT_SECRET value:', process.env.JWT_SECRET);
+    console.log('DEBUG: DATABASE_URL:', process.env.DATABASE_URL);
     console.log(process.env.DATABASE_URL);
     await AppDataSource.initialize();
     // eslint-disable-next-line no-console

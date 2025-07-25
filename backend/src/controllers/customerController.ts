@@ -1,12 +1,13 @@
 import { Router, Request, Response } from 'express';
 import {
-  listProviders,
-  createProvider,
-  updateProvider,
-  deleteProvider,
-  smartSearchProviders,
-  smartSearchAllProviders,
-} from '../services/providerService';
+  listCustomers,
+  createCustomer,
+  updateCustomer,
+  deleteCustomer,
+  getCustomerById,
+  smartSearchCustomers,
+  smartSearchAllCustomers,
+} from '../services/customerService';
 import { requireRole } from '../middleware/auth';
 import { logger } from '../utils/logger';
 
@@ -18,9 +19,9 @@ const router = Router();
 
 /**
  * @swagger
- * /api/providers:
+ * /api/customers:
  *   get:
- *     summary: List all providers (with optional search)
+ *     summary: List all customers (with optional search)
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -31,18 +32,18 @@ const router = Router();
  *         description: Partial name to search
  *     responses:
  *       200:
- *         description: List of providers
+ *         description: List of customers
  *         content:
  *           application/json:
  *             schema:
  *               type: object
  *               properties:
- *                 providers:
+ *                 customers:
  *                   type: array
  *                   items:
- *                     $ref: '#/components/schemas/Provider'
+ *                     $ref: '#/components/schemas/Customer'
  *   post:
- *     summary: Create a new provider
+ *     summary: Create a new customer
  *     security:
  *       - bearerAuth: []
  *     requestBody:
@@ -50,17 +51,24 @@ const router = Router();
  *       content:
  *         application/json:
  *           schema:
- *             $ref: '#/components/schemas/Provider'
+ *             type: object
+ *             properties:
+ *               name:
+ *                 type: string
+ *               phone:
+ *                 type: string
+ *               address:
+ *                 type: string
  *     responses:
  *       201:
- *         description: Created provider
+ *         description: Created customer
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/Provider'
- * /api/providers/search:
+ *               $ref: '#/components/schemas/Customer'
+ * /api/customers/search:
  *   get:
- *     summary: Smart search for providers (top 10 prefix matches)
+ *     summary: Smart search for customers (top 10 prefix matches)
  *     security:
  *       - bearerAuth: []
  *     parameters:
@@ -71,15 +79,36 @@ const router = Router();
  *         description: Prefix to search
  *     responses:
  *       200:
- *         description: List of matching providers
+ *         description: List of matching customers
  *         content:
  *           application/json:
  *             schema:
  *               type: array
  *               items:
- *                 $ref: '#/components/schemas/Provider'
+ *                 $ref: '#/components/schemas/Customer'
+ * /api/customers/searchall:
+ *   get:
+ *     summary: Smart search for all customers (all prefix matches)
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: q
+ *         schema:
+ *           type: string
+ *         description: Prefix to search
+ *     responses:
+ *       200:
+ *         description: List of matching customers
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/Customer'
  */
-// GET /api/providers?q=
+
+// GET /api/customers?q=
 router.get(
   '/',
   requireRole('app_admin'),
@@ -87,35 +116,35 @@ router.get(
     try {
       const accountId = (req as ReqWithAuth).auth.accountId;
       const q = typeof req.query.q === 'string' ? req.query.q : undefined;
-      const provs = await listProviders(accountId, q);
-      res.status(200).json({ providers: provs });
+      const customers = await listCustomers(accountId, q);
+      res.status(200).json({ customers });
     } catch (err: unknown) {
-      logger.error('List providers error', { error: err });
+      logger.error('List customers error', { error: err });
       res.status(500).json({ message: (err as Error).message });
     }
   },
 );
 
-// POST /api/providers
+// POST /api/customers
 router.post(
   '/',
   requireRole('app_admin'),
   async (req: Request, res: Response) => {
     try {
       const accountId = (req as ReqWithAuth).auth.accountId;
-      const { name, contactEmail, contactPhone } = req.body as {
+      const { name, phone, address } = req.body as {
         name: string;
-        contactEmail: string;
-        contactPhone: string;
+        phone?: string;
+        address?: string;
       };
-      const prov = await createProvider(accountId, {
+      const customer = await createCustomer(accountId, {
         name,
-        contactEmail,
-        contactPhone,
+        phone,
+        address,
       });
-      res.status(201).json(prov);
+      res.status(201).json(customer);
     } catch (err: unknown) {
-      logger.error('Create provider error', { error: err });
+      logger.error('Create customer error', { error: err });
       res.status(400).json({ message: (err as Error).message });
     }
   },
@@ -129,10 +158,10 @@ router.get(
     const accountId = (req as ReqWithAuth).auth.accountId;
     const q = typeof req.query.q === 'string' ? req.query.q : '';
     try {
-      const results = await smartSearchProviders(accountId, q, 10);
+      const results = await smartSearchCustomers(accountId, q, 10);
       res.status(200).json(results);
     } catch (err: unknown) {
-      logger.error('Provider smart search error', { error: err });
+      logger.error('Customer smart search error', { error: err });
       res.status(500).json({ message: (err as Error).message });
     }
   },
@@ -146,53 +175,73 @@ router.get(
     const accountId = (req as ReqWithAuth).auth.accountId;
     const q = typeof req.query.q === 'string' ? req.query.q : '';
     try {
-      const results = await smartSearchAllProviders(accountId, q);
+      const results = await smartSearchAllCustomers(accountId, q);
       res.status(200).json(results);
     } catch (err: unknown) {
-      logger.error('Provider smart search all error', { error: err });
+      logger.error('Customer smart search all error', { error: err });
       res.status(500).json({ message: (err as Error).message });
     }
   },
 );
 
-// PUT /api/providers/:providerId
-router.put(
-  '/:providerId',
+// GET /api/customers/:customerId
+router.get(
+  '/:customerId',
   requireRole('app_admin'),
   async (req: Request, res: Response) => {
     try {
       const accountId = (req as ReqWithAuth).auth.accountId;
-      const id = Number(req.params.providerId);
-      const { name, contactEmail, contactPhone } = req.body as Partial<{
+      const id = Number(req.params.customerId);
+      const customer = await getCustomerById(accountId, id);
+      if (!customer) {
+        return res.status(404).json({ message: 'Customer not found' });
+      }
+      res.status(200).json(customer);
+    } catch (err: unknown) {
+      logger.error('Get customer error', { error: err });
+      res.status(500).json({ message: (err as Error).message });
+    }
+  },
+);
+
+// PUT /api/customers/:customerId
+router.put(
+  '/:customerId',
+  requireRole('app_admin'),
+  async (req: Request, res: Response) => {
+    try {
+      const accountId = (req as ReqWithAuth).auth.accountId;
+      const id = Number(req.params.customerId);
+      const { name, phone, address } = req.body as Partial<{
         name: string;
-        contactEmail: string;
-        contactPhone: string;
+        phone: string;
+        address: string;
       }>;
-      const updated = await updateProvider(accountId, id, {
+      const updated = await updateCustomer(accountId, id, {
         name,
-        contactEmail,
-        contactPhone,
+        phone,
+        address,
       });
       res.status(200).json(updated);
     } catch (err: unknown) {
-      logger.error('Update provider error', { error: err });
+      logger.error('Update customer error', { error: err });
       res.status(400).json({ message: (err as Error).message });
     }
   },
 );
 
-// DELETE /api/providers/:providerId
+// DELETE /api/customers/:customerId
 router.delete(
-  '/:providerId',
+  '/:customerId',
   requireRole('app_admin'),
   async (req: Request, res: Response) => {
     try {
       const accountId = (req as ReqWithAuth).auth.accountId;
-      const id = Number(req.params.providerId);
-      await deleteProvider(accountId, id);
+      const id = Number(req.params.customerId);
+      await deleteCustomer(accountId, id);
       res.status(204).end();
     } catch (err: unknown) {
-      logger.error('Delete provider error', { error: err });
+      logger.error('Delete customer error', { error: err });
       res.status(400).json({ message: (err as Error).message });
     }
   },

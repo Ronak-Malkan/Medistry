@@ -38,8 +38,18 @@ export class PatientService {
       .createQueryBuilder('patient')
       .innerJoin('patient.account', 'account')
       .where('account.accountId = :accountId', { accountId })
-      .andWhere('patient.name ILIKE :q', { q: `%${q}%` })
+      .andWhere('patient.name ILIKE :q', { q: `${q}%` })
       .limit(limit)
+      .getMany();
+  }
+
+  async smartSearchAll(q: string, accountId: number) {
+    return AppDataSource.getRepository(Patient)
+      .createQueryBuilder('patient')
+      .innerJoin('patient.account', 'account')
+      .where('account.accountId = :accountId', { accountId })
+      .andWhere('patient.name ILIKE :q', { q: `${q}%` })
+      .orderBy('patient.name', 'ASC')
       .getMany();
   }
 }

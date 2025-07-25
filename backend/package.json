@@ -6,7 +6,7 @@
     "dev": "ts-node-dev --respawn src/index.ts",
     "build": "tsc",
     "lint": "eslint \"src/**/*.{ts,js}\"",
-    "test": "jest --runInBand --passWithNoTests",
+    "test": "cross-env NODE_ENV=test dotenv -e .env.test -- jest --runInBand --passWithNoTests",
     "seed:demo": "ts-node scripts/seedDemoData.ts"
   },
   "dependencies": {
@@ -42,6 +42,8 @@
     "@types/winston": "^2.4.4",
     "@typescript-eslint/eslint-plugin": "^8.34.0",
     "@typescript-eslint/parser": "^8.34.0",
+    "cross-env": "^7.0.3",
+    "dotenv-cli": "^9.0.0",
     "eslint": "^8.39.0",
     "eslint-config-prettier": "^8.8.0",
     "eslint-plugin-import": "^2.29.4",

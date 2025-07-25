@@ -1,23 +1,26 @@
 import React, { useState, useEffect } from "react";
-import SuggestionDropdown from "../components/SuggestionDropdown";
 
 // Types
-interface Content {
-  contentId: number;
+interface Customer {
+  customerId: number;
   name: string;
+  phone?: string;
+  address?: string;
   createdAt: string;
   updatedAt: string;
 }
 
-interface ContentFormData {
+interface CustomerFormData {
   name: string;
+  phone?: string;
+  address?: string;
 }
 
 // API functions
-async function fetchContents(prefix?: string) {
+async function fetchCustomers(prefix?: string) {
   const url = prefix
-    ? `/api/contents/search?prefix=${encodeURIComponent(prefix)}`
-    : "/api/contents";
+    ? `/api/customers/search?q=${encodeURIComponent(prefix)}`
+    : "/api/customers";
 
   const res = await fetch(url, {
     credentials: "include",
@@ -27,11 +30,11 @@ async function fetchContents(prefix?: string) {
   });
   if (!res.ok) return [];
   const data = await res.json();
-  return prefix ? data : data.contents || [];
+  return prefix ? data : data.customers || [];
 }
 
-async function createContent(data: ContentFormData) {
-  const res = await fetch("/api/contents", {
+async function createCustomer(data: CustomerFormData) {
+  const res = await fetch("/api/customers", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -41,12 +44,12 @@ async function createContent(data: ContentFormData) {
     body: JSON.stringify(data),
   });
   if (!res.ok)
-    throw new Error((await res.json()).message || "Failed to create content");
+    throw new Error((await res.json()).message || "Failed to create customer");
   return await res.json();
 }
 
-async function updateContent(id: number, data: ContentFormData) {
-  const res = await fetch(`/api/contents/${id}`, {
+async function updateCustomer(id: number, data: Partial<CustomerFormData>) {
+  const res = await fetch(`/api/customers/${id}`, {
     method: "PUT",
     headers: {
       "Content-Type": "application/json",
@@ -56,46 +59,52 @@ async function updateContent(id: number, data: ContentFormData) {
     body: JSON.stringify(data),
   });
   if (!res.ok)
-    throw new Error((await res.json()).message || "Failed to update content");
+    throw new Error((await res.json()).message || "Failed to update customer");
   return await res.json();
 }
 
-async function deleteContent(id: number) {
-  const res = await fetch(`/api/contents/${id}`, {
+async function deleteCustomer(id: number) {
+  const res = await fetch(`/api/customers/${id}`, {
     method: "DELETE",
     headers: {
       Authorization: `Bearer ${localStorage.getItem("medistry_jwt")}`,
     },
     credentials: "include",
   });
-  if (!res.ok) throw new Error("Failed to delete content");
+  if (!res.ok) throw new Error("Failed to delete customer");
 }
 
-export default function ContentsPage() {
-  const [contents, setContents] = useState<Content[]>([]);
+export default function CustomersPage() {
+  const [customers, setCustomers] = useState<Customer[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
   const [showAddModal, setShowAddModal] = useState(false);
-  const [editingContent, setEditingContent] = useState<Content | null>(null);
-  const [formData, setFormData] = useState<ContentFormData>({
+  const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
+  const [formData, setFormData] = useState<CustomerFormData>({
     name: "",
+    phone: "",
+    address: "",
   });
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
-  // Load contents
+  // Load customers
   useEffect(() => {
-    loadContents();
+    loadCustomers();
   }, []);
 
-  const loadContents = async () => {
+  useEffect(() => {
+    console.log("customers", customers);
+  }, [customers, setCustomers]);
+
+  const loadCustomers = async () => {
     setLoading(true);
     try {
-      const data = await fetchContents(searchTerm);
-      setContents(data);
+      const data = await fetchCustomers(searchTerm);
+      setCustomers(data);
     } catch (err) {
-      setError("Failed to load contents");
+      setError("Failed to load customers");
     } finally {
       setLoading(false);
     }
@@ -104,13 +113,14 @@ export default function ContentsPage() {
   // Search handler
   const handleSearch = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const prefix = e.target.value;
+    console.log("prefix", prefix);
     setSearchTerm(prefix);
     setLoading(true);
     try {
-      const data = await fetchContents(prefix);
-      setContents(data);
+      const data = await fetchCustomers(prefix);
+      setCustomers(data);
     } catch (err) {
-      setError("Failed to search contents");
+      setError("Failed to search customers");
     } finally {
       setLoading(false);
     }
@@ -126,19 +136,19 @@ export default function ContentsPage() {
     setSubmitting(true);
     setError(null);
     try {
-      if (editingContent) {
-        await updateContent(editingContent.contentId, formData);
-        setSuccess("Content updated successfully!");
+      if (editingCustomer) {
+        await updateCustomer(editingCustomer.customerId, formData);
+        setSuccess("Customer updated successfully!");
       } else {
-        await createContent(formData);
-        setSuccess("Content created successfully!");
+        await createCustomer(formData);
+        setSuccess("Customer created successfully!");
       }
 
       // Reset form and reload
-      setFormData({ name: "" });
-      setEditingContent(null);
+      setFormData({ name: "", phone: "", address: "" });
+      setEditingCustomer(null);
       setShowAddModal(false);
-      loadContents();
+      loadCustomers();
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -146,29 +156,31 @@ export default function ContentsPage() {
     }
   };
 
-  const handleEdit = (content: Content) => {
-    setEditingContent(content);
+  const handleEdit = (customer: Customer) => {
+    setEditingCustomer(customer);
     setFormData({
-      name: content.name,
+      name: customer.name,
+      phone: customer.phone || "",
+      address: customer.address || "",
     });
     setShowAddModal(true);
   };
 
-  const handleDelete = async (content: Content) => {
-    if (!confirm(`Are you sure you want to delete "${content.name}"?`)) return;
+  const handleDelete = async (customer: Customer) => {
+    if (!confirm(`Are you sure you want to delete "${customer.name}"?`)) return;
 
     try {
-      await deleteContent(content.contentId);
-      setSuccess("Content deleted successfully!");
-      loadContents();
+      await deleteCustomer(customer.customerId);
+      setSuccess("Customer deleted successfully!");
+      loadCustomers();
     } catch (err: any) {
       setError(err.message);
     }
   };
 
   const resetForm = () => {
-    setFormData({ name: "" });
-    setEditingContent(null);
+    setFormData({ name: "", phone: "", address: "" });
+    setEditingCustomer(null);
     setError(null);
     setSuccess(null);
   };
@@ -179,7 +191,7 @@ export default function ContentsPage() {
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-6">
           <h1 className="text-3xl font-extrabold mb-2 text-teal-700 tracking-tight">
-            Contents
+            Customers
           </h1>
           <button
             onClick={() => {
@@ -188,7 +200,7 @@ export default function ContentsPage() {
             }}
             className="bg-teal-600 text-white px-4 py-2 rounded font-semibold hover:bg-teal-700 transition"
           >
-            + Add Content
+            + Add Customer
           </button>
         </div>
 
@@ -196,12 +208,20 @@ export default function ContentsPage() {
         <div className="bg-white rounded-xl shadow-md border border-blue-100 p-6 mb-6">
           <div className="flex flex-col sm:flex-row gap-4">
             <div className="flex-1">
+              {/* <SuggestionDropdown
+                value={searchTerm}
+                onChange={(val) => handleSearch(val)}
+                fetchSuggestions={fetchCustomers}
+                placeholder="Search customers..."
+                getLabel={(customer: Customer) => customer.name}
+                inputClassName="w-full border rounded px-3 py-2"
+              /> */}
               <div className="relative w-full">
                 <input
                   className="w-full border rounded px-3 py-2"
                   value={searchTerm}
                   onChange={handleSearch}
-                  placeholder="Search contents..."
+                  placeholder="Search customers..."
                   autoComplete="off"
                 />
               </div>
@@ -221,7 +241,7 @@ export default function ContentsPage() {
           </div>
         )}
 
-        {/* Contents Table */}
+        {/* Customers Table */}
         <div className="bg-white rounded-xl shadow-md border border-blue-100 overflow-hidden">
           {loading ? (
             <div className="flex items-center justify-center p-8">
@@ -255,10 +275,13 @@ export default function ContentsPage() {
                       Name
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Created
+                      Phone
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Updated
+                      Address
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Created
                     </th>
                     <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Actions
@@ -266,28 +289,35 @@ export default function ContentsPage() {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {contents.map((content) => (
-                    <tr key={content.contentId} className="hover:bg-gray-50">
+                  {customers.map((customer) => (
+                    <tr key={customer.customerId} className="hover:bg-gray-50">
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="text-sm font-medium text-gray-900">
-                          {content.name}
+                          {customer.name}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm text-gray-500">
+                          {customer.phone || "-"}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="text-sm text-gray-500 max-w-xs truncate">
+                          {customer.address || "-"}
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {new Date(content.createdAt).toLocaleDateString()}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {new Date(content.updatedAt).toLocaleDateString()}
+                        {new Date(customer.createdAt).toLocaleDateString()}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                         <button
-                          onClick={() => handleEdit(content)}
+                          onClick={() => handleEdit(customer)}
                           className="text-teal-600 hover:text-teal-900 mr-3"
                         >
                           Edit
                         </button>
                         <button
-                          onClick={() => handleDelete(content)}
+                          onClick={() => handleDelete(customer)}
                           className="text-red-600 hover:text-red-900"
                         >
                           Delete
@@ -297,9 +327,9 @@ export default function ContentsPage() {
                   ))}
                 </tbody>
               </table>
-              {contents.length === 0 && (
+              {customers.length === 0 && (
                 <div className="text-center py-8 text-gray-500">
-                  No contents found
+                  No customers found
                 </div>
               )}
             </div>
@@ -313,13 +343,13 @@ export default function ContentsPage() {
           <div className="bg-white rounded-xl shadow-xl w-full max-w-md">
             <div className="p-6">
               <h2 className="text-2xl font-bold mb-4 text-teal-700">
-                {editingContent ? "Edit Content" : "Add New Content"}
+                {editingCustomer ? "Edit Customer" : "Add New Customer"}
               </h2>
 
               <form onSubmit={handleSubmit} className="space-y-4">
                 <div>
                   <label className="block text-gray-700 font-semibold mb-1">
-                    Content Name *
+                    Customer Name *
                   </label>
                   <input
                     type="text"
@@ -328,8 +358,38 @@ export default function ContentsPage() {
                       setFormData({ ...formData, name: e.target.value })
                     }
                     className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-teal-500"
-                    placeholder="Enter content name"
+                    placeholder="Enter customer name"
                     required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-gray-700 font-semibold mb-1">
+                    Phone Number
+                  </label>
+                  <input
+                    type="tel"
+                    value={formData.phone}
+                    onChange={(e) =>
+                      setFormData({ ...formData, phone: e.target.value })
+                    }
+                    className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-teal-500"
+                    placeholder="Enter phone number"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-gray-700 font-semibold mb-1">
+                    Address
+                  </label>
+                  <textarea
+                    value={formData.address}
+                    onChange={(e) =>
+                      setFormData({ ...formData, address: e.target.value })
+                    }
+                    className="w-full border rounded px-3 py-2 focus:outline-none focus:ring-2 focus:ring-teal-500"
+                    placeholder="Enter address"
+                    rows={3}
                   />
                 </div>
 
@@ -341,7 +401,7 @@ export default function ContentsPage() {
                   >
                     {submitting
                       ? "Saving..."
-                      : editingContent
+                      : editingCustomer
                       ? "Update"
                       : "Create"}
                   </button>

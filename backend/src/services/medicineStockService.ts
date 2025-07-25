@@ -161,6 +161,7 @@ export class MedicineStockService {
       incomingDate: s.incomingDate,
       quantityAvailable: s.quantityAvailable,
       price: s.price,
+      unitsPerPack: s.unitsPerPack,
     }));
   }
 }

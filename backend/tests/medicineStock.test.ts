@@ -43,7 +43,9 @@ describe('Medicine Stock Controller (/medicine-stock)', () => {
   });
 
   beforeEach(async () => {
-    await AppDataSource.synchronize(true);
+    if (process.env.NODE_ENV === 'test') {
+      await AppDataSource.synchronize(true); // Reset test DB between runs
+    }
     // Create test account
     account = await AppDataSource.getRepository(Account).save({
       name: 'Test Pharmacy',

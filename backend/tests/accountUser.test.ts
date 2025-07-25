@@ -31,7 +31,9 @@ const companyPayload = {
 
 beforeAll(async () => {
   await AppDataSource.initialize();
-  await AppDataSource.synchronize(true);
+  if (process.env.NODE_ENV === 'test') {
+    await AppDataSource.synchronize(true); // Reset test DB between runs
+  }
 
   // Register company (creates account_admin)
   const res = await request(app)
@@ -265,9 +267,27 @@ describe('Patient & Provider Edge/Error Cases', () => {
     expect(res.body.length).toBe(0);
   });
 
+  it('GET /api/patients/searchall returns empty for no match', async () => {
+    const res = await request(app)
+      .get('/api/patients/searchall?q=nonexistent')
+      .set('Authorization', `Bearer ${appAdminToken}`);
+    expect(res.status).toBe(200);
+    expect(Array.isArray(res.body)).toBe(true);
+    expect(res.body.length).toBe(0);
+  });
+
   it('GET /api/providers/search returns empty for no match', async () => {
     const res = await request(app)
       .get('/api/providers/search?q=nonexistent')
+      .set('Authorization', `Bearer ${appAdminToken}`);
+    expect(res.status).toBe(200);
+    expect(Array.isArray(res.body)).toBe(true);
+    expect(res.body.length).toBe(0);
+  });
+
+  it('GET /api/providers/searchall returns empty for no match', async () => {
+    const res = await request(app)
+      .get('/api/providers/searchall?q=nonexistent')
       .set('Authorization', `Bearer ${appAdminToken}`);
     expect(res.status).toBe(200);
     expect(Array.isArray(res.body)).toBe(true);

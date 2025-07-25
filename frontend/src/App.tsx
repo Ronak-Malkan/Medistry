@@ -10,6 +10,10 @@ import AccountsPage from "./pages/AccountsPage";
 import UsersPage from "./pages/UsersPage";
 import ContentsPage from "./pages/ContentsPage";
 import MedicinesPage from "./pages/MedicinesPage";
+import CustomersPage from "./pages/CustomersPage";
+import ProvidersPage from "./pages/ProvidersPage";
+import PatientsPage from "./pages/PatientsPage";
+import MedicineStockPage from "./pages/MedicineStockPage";
 import LandingPage from "./pages/LandingPage";
 import SignUpPage from "./pages/SignUpPage";
 import ProtectedLayout from "./components/ProtectedLayout";
@@ -189,6 +193,10 @@ export default function App() {
             <Route path="/users" element={<UsersPage />} />
             <Route path="/contents" element={<ContentsPage />} />
             <Route path="/medicines" element={<MedicinesPage />} />
+            <Route path="/customers" element={<CustomersPage />} />
+            <Route path="/providers" element={<ProvidersPage />} />
+            <Route path="/patients" element={<PatientsPage />} />
+            <Route path="/inventory" element={<MedicineStockPage />} />
             <Route
               path="/purchase-invoices"
               element={<PurchaseInvoicePage />}
