@@ -91,6 +91,25 @@ router.get(
     try {
       const { accountId } = (req as AuthRequest).auth;
       const bills = await incomingBillService.findByAccount(accountId);
+      res.json({ incomingBills: bills });
+    } catch (err) {
+      res.status(500).json({ error: (err as Error).message });
+    }
+  },
+);
+
+// Search incoming bills
+router.get(
+  '/search',
+  requireRole('app_admin'),
+  async (req: Request, res: Response) => {
+    try {
+      const { accountId } = (req as AuthRequest).auth;
+      const { q } = req.query;
+      const bills = await incomingBillService.search(
+        String(q || ''),
+        accountId,
+      );
       res.json(bills);
     } catch (err) {
       res.status(500).json({ error: (err as Error).message });

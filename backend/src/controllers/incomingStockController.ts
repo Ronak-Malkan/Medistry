@@ -88,10 +88,56 @@ router.get(
   async (req: Request, res: Response) => {
     try {
       const { accountId } = (req as AuthRequest).auth;
-      const stocks = await incomingStockService.findByAccount(accountId);
-      res.json(stocks);
+      const { billId } = req.query;
+
+      if (billId) {
+        const stocks = await incomingStockService.findByBillId(
+          parseInt(billId as string),
+          accountId,
+        );
+        res.json({ incomingStocks: stocks });
+      } else {
+        const stocks = await incomingStockService.findByAccount(accountId);
+        res.json({ incomingStocks: stocks });
+      }
     } catch (err) {
       res.status(500).json({ error: (err as Error).message });
+    }
+  },
+);
+
+// Update incoming stock
+router.put(
+  '/:id',
+  requireRole('app_admin'),
+  async (req: Request, res: Response) => {
+    try {
+      const { accountId } = (req as AuthRequest).auth;
+      const stockId = parseInt(req.params.id);
+      const stock = await incomingStockService.update(
+        stockId,
+        req.body,
+        accountId,
+      );
+      res.json(stock);
+    } catch (err) {
+      res.status(400).json({ error: (err as Error).message });
+    }
+  },
+);
+
+// Delete incoming stock
+router.delete(
+  '/:id',
+  requireRole('app_admin'),
+  async (req: Request, res: Response) => {
+    try {
+      const { accountId } = (req as AuthRequest).auth;
+      const stockId = parseInt(req.params.id);
+      await incomingStockService.delete(stockId, accountId);
+      res.status(204).send();
+    } catch (err) {
+      res.status(400).json({ error: (err as Error).message });
     }
   },
 );

@@ -1,9 +1,11 @@
 import { Router, Request, Response } from 'express';
 import { requireRole } from '../middleware/auth';
 import { MedicineService } from '../services/medicineService';
+import { MedicineStockService } from '../services/medicineStockService';
 
 const router = Router();
 const service = new MedicineService();
+const stockService = new MedicineStockService();
 
 /**
  * @swagger
@@ -136,6 +138,51 @@ const service = new MedicineService();
  *               type: array
  *               items:
  *                 $ref: '#/components/schemas/Medicine'
+ * /api/medicines/stats:
+ *   get:
+ *     summary: Get medicine statistics
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Medicine statistics
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 count:
+ *                   type: integer
+ * /api/medicines/low-stock:
+ *   get:
+ *     summary: Get low stock medicines count
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Low stock count
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 count:
+ *                   type: integer
+ * /api/medicines/expiring-soon:
+ *   get:
+ *     summary: Get expiring soon medicines count
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Expiring soon count
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 count:
+ *                   type: integer
  */
 // List all medicines
 router.get(
@@ -221,6 +268,50 @@ router.get(
       res.json(results);
     } catch (e) {
       res.status(400).json({ error: (e as Error).message });
+    }
+  },
+);
+
+// Get medicine statistics
+router.get(
+  '/stats',
+  requireRole('app_admin'),
+  async (req: Request, res: Response) => {
+    try {
+      const medicines = await service.list();
+      res.json({ count: medicines.length });
+    } catch (e) {
+      res.status(500).json({ error: (e as Error).message });
+    }
+  },
+);
+
+// Get low stock medicines count
+router.get(
+  '/low-stock',
+  requireRole('app_admin'),
+  async (req: Request, res: Response) => {
+    try {
+      const { accountId } = (req as any).auth;
+      const lowStockCount = await stockService.getLowStockCount(accountId);
+      res.json({ count: lowStockCount });
+    } catch (e) {
+      res.status(500).json({ error: (e as Error).message });
+    }
+  },
+);
+
+// Get expiring soon medicines count
+router.get(
+  '/expiring-soon',
+  requireRole('app_admin'),
+  async (req: Request, res: Response) => {
+    try {
+      const { accountId } = (req as any).auth;
+      const expiringCount = await stockService.getExpiringSoonCount(accountId);
+      res.json({ count: expiringCount });
+    } catch (e) {
+      res.status(500).json({ error: (e as Error).message });
     }
   },
 );

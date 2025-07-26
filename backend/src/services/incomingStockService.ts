@@ -1,5 +1,8 @@
 import { medicineStockRepository } from '../repositories/medicineStockRepository';
 import { incomingStockRepository } from '../repositories/incomingStockRepository';
+import { IncomingStock } from '../entities/IncomingStock';
+import { MedicineStock } from '../entities/MedicineStock';
+import { AppDataSource } from '../data-source';
 import { logger } from '../utils/logger';
 
 interface IncomingStockData {
@@ -82,9 +85,112 @@ export class IncomingStockService {
   }
 
   async findByAccount(accountId: number) {
-    return medicineStockRepository.find({
-      where: { accountId },
+    return incomingStockRepository.find({
+      where: { account: { accountId } },
+      relations: ['medicine', 'incomingBill'],
+    });
+  }
+
+  async findByBillId(billId: number, accountId: number) {
+    return incomingStockRepository.find({
+      where: {
+        incomingBill: { incoming_bill_id: billId },
+        account: { accountId },
+      },
       relations: ['medicine'],
+    });
+  }
+
+  async update(
+    stockId: number,
+    data: Partial<IncomingStock>,
+    accountId: number,
+  ) {
+    return await AppDataSource.transaction(async (manager) => {
+      // Find the existing incoming stock
+      const existingStock = await manager.findOne(IncomingStock, {
+        where: {
+          incoming_stock_id: stockId,
+          account: { accountId },
+        },
+        relations: ['medicine'],
+      });
+
+      if (!existingStock) {
+        throw new Error('Incoming stock not found');
+      }
+
+      // Find the medicine stock entry
+      const medicineStock = await manager.findOne(MedicineStock, {
+        where: {
+          medicineId: existingStock.medicine.medicineId,
+          batchNumber: existingStock.batch_number,
+          accountId,
+        },
+      });
+
+      if (!medicineStock) {
+        throw new Error('Medicine stock not found');
+      }
+
+      // Calculate the difference in quantity
+      const oldQuantity = existingStock.quantity_received;
+      const newQuantity = data.quantity_received || oldQuantity;
+      const quantityDifference = newQuantity - oldQuantity;
+
+      // Update medicine stock if quantity changed
+      if (quantityDifference !== 0) {
+        medicineStock.quantityAvailable += quantityDifference;
+        await manager.save(MedicineStock, medicineStock);
+      }
+
+      // Update the incoming stock
+      const updatedStock = manager.merge(IncomingStock, existingStock, {
+        quantity_received: newQuantity,
+        unit_cost: data.unit_cost || existingStock.unit_cost,
+        discount_line: data.discount_line || existingStock.discount_line,
+        free_quantity: data.free_quantity || existingStock.free_quantity,
+      });
+
+      return await manager.save(IncomingStock, updatedStock);
+    });
+  }
+
+  async delete(stockId: number, accountId: number) {
+    return await AppDataSource.transaction(async (manager) => {
+      // Find the existing incoming stock
+      const existingStock = await manager.findOne(IncomingStock, {
+        where: {
+          incoming_stock_id: stockId,
+          account: { accountId },
+        },
+        relations: ['medicine'],
+      });
+
+      if (!existingStock) {
+        throw new Error('Incoming stock not found');
+      }
+
+      // Find the medicine stock entry
+      const medicineStock = await manager.findOne(MedicineStock, {
+        where: {
+          medicineId: existingStock.medicine.medicineId,
+          batchNumber: existingStock.batch_number,
+          accountId,
+        },
+      });
+
+      if (medicineStock) {
+        // Remove the received quantity from stock
+        medicineStock.quantityAvailable = Math.max(
+          0,
+          medicineStock.quantityAvailable - existingStock.quantity_received,
+        );
+        await manager.save(MedicineStock, medicineStock);
+      }
+
+      // Delete the incoming stock
+      await manager.delete(IncomingStock, { incoming_stock_id: stockId });
     });
   }
 }

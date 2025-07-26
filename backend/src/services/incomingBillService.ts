@@ -108,13 +108,33 @@ export class IncomingBillService {
   }
 
   async findByAccount(accountId: number) {
-    return incomingBillRepository.find({ where: { account: { accountId } } });
+    return incomingBillRepository.find({
+      where: { account: { accountId } },
+      relations: ['provider'],
+    });
   }
 
   async findOneById(id: number, accountId: number) {
     return incomingBillRepository.findOne({
       where: { incoming_bill_id: id, account: { accountId } },
+      relations: ['provider'],
     });
+  }
+
+  async search(q: string, accountId: number) {
+    const queryBuilder = incomingBillRepository
+      .createQueryBuilder('bill')
+      .leftJoinAndSelect('bill.provider', 'provider')
+      .where('bill.account.accountId = :accountId', { accountId });
+
+    if (q.trim()) {
+      queryBuilder.andWhere(
+        '(bill.invoice_number ILIKE :q OR provider.name ILIKE :q)',
+        { q: `%${q}%` },
+      );
+    }
+
+    return queryBuilder.orderBy('bill.invoice_date', 'DESC').getMany();
   }
 
   async update(id: number, data: Partial<IncomingBill>, accountId: number) {
@@ -126,9 +146,57 @@ export class IncomingBillService {
   }
 
   async delete(id: number, accountId: number) {
-    return incomingBillRepository.delete({
-      incoming_bill_id: id,
-      account: { accountId },
+    // Start transaction to reverse stock additions
+    return await AppDataSource.transaction(async (manager) => {
+      // 1. Get the incoming bill with related stocks
+      const bill = await manager.findOne(IncomingBill, {
+        where: { incoming_bill_id: id, account: { accountId } },
+        relations: ['account'],
+      });
+
+      if (!bill) {
+        throw new Error('Incoming bill not found');
+      }
+
+      // 2. Get all incoming stocks for this bill
+      const incomingStocks = await manager.find(IncomingStock, {
+        where: { incomingBill: { incoming_bill_id: id } },
+        relations: ['medicine'],
+      });
+
+      // 3. Reverse stock additions for each item
+      for (const stock of incomingStocks) {
+        // Find the corresponding medicine stock
+        const medicineStock = await manager.findOne(MedicineStock, {
+          where: {
+            medicineId: stock.medicine.medicineId,
+            batchNumber: stock.batch_number,
+            accountId,
+          },
+        });
+
+        if (medicineStock) {
+          // Reduce the available quantity
+          medicineStock.quantityAvailable = Math.max(
+            0,
+            (medicineStock.quantityAvailable || 0) - stock.quantity_received,
+          );
+          await manager.save(MedicineStock, medicineStock);
+        }
+      }
+
+      // 4. Delete incoming stocks
+      await manager.delete(IncomingStock, {
+        incomingBill: { incoming_bill_id: id },
+      });
+
+      // 5. Delete the incoming bill
+      const result = await manager.delete(IncomingBill, {
+        incoming_bill_id: id,
+        account: { accountId },
+      });
+
+      return result;
     });
   }
 }

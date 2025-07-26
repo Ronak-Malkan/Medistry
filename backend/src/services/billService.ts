@@ -128,7 +128,26 @@ export class BillService {
   }
 
   async findByAccount(accountId: number) {
-    return billRepository.find({ where: { account: { accountId } } });
+    return billRepository.find({
+      where: { account: { accountId } },
+      relations: ['patient'],
+    });
+  }
+
+  async search(q: string, accountId: number) {
+    const queryBuilder = billRepository
+      .createQueryBuilder('bill')
+      .leftJoinAndSelect('bill.patient', 'patient')
+      .where('bill.account.accountId = :accountId', { accountId });
+
+    if (q.trim()) {
+      queryBuilder.andWhere(
+        '(bill.bill_id::text ILIKE :q OR patient.name ILIKE :q)',
+        { q: `%${q}%` },
+      );
+    }
+
+    return queryBuilder.orderBy('bill.bill_date', 'DESC').getMany();
   }
 
   async findOneById(id: number, accountId: number) {
@@ -148,10 +167,53 @@ export class BillService {
   }
 
   async delete(id: number, accountId: number) {
-    const result: DeleteResult = await billRepository.delete({
-      bill_id: id,
-      account: { accountId },
+    // Start transaction to reverse stock decrements
+    return await AppDataSource.transaction(async (manager) => {
+      // 1. Get the bill with related selling logs
+      const bill = await manager.findOne(Bill, {
+        where: { bill_id: id, account: { accountId } },
+        relations: ['account'],
+      });
+
+      if (!bill) {
+        throw new Error('Bill not found');
+      }
+
+      // 2. Get all selling logs for this bill
+      const sellingLogs = await manager.find(SellingLog, {
+        where: { bill: { bill_id: id } },
+        relations: ['medicine'],
+      });
+
+      // 3. Reverse stock decrements for each item
+      for (const log of sellingLogs) {
+        // Find the corresponding medicine stock
+        const medicineStock = await manager.findOne(MedicineStock, {
+          where: {
+            medicineId: log.medicine.medicineId,
+            batchNumber: log.batch_number,
+            accountId,
+          },
+        });
+
+        if (medicineStock) {
+          // Increase the available quantity
+          medicineStock.quantityAvailable =
+            (medicineStock.quantityAvailable || 0) + log.quantity_sold;
+          await manager.save(MedicineStock, medicineStock);
+        }
+      }
+
+      // 4. Delete selling logs
+      await manager.delete(SellingLog, { bill: { bill_id: id } });
+
+      // 5. Delete the bill
+      const result: DeleteResult = await manager.delete(Bill, {
+        bill_id: id,
+        account: { accountId },
+      });
+
+      return result;
     });
-    return result;
   }
 }

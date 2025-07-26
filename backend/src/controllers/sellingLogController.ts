@@ -65,10 +65,52 @@ router.get(
   async (req: Request, res: Response) => {
     try {
       const { accountId } = (req as AuthRequest).auth;
-      const logs = await sellingLogService.findByAccount(accountId);
-      res.json(logs);
+      const { billId } = req.query;
+
+      if (billId) {
+        const logs = await sellingLogService.findByBillId(
+          parseInt(billId as string),
+          accountId,
+        );
+        res.json({ sellingLogs: logs });
+      } else {
+        const logs = await sellingLogService.findByAccount(accountId);
+        res.json({ sellingLogs: logs });
+      }
     } catch (err) {
       res.status(500).json({ error: (err as Error).message });
+    }
+  },
+);
+
+// Update selling log
+router.put(
+  '/:id',
+  requireRole('app_admin'),
+  async (req: Request, res: Response) => {
+    try {
+      const { accountId } = (req as AuthRequest).auth;
+      const logId = parseInt(req.params.id);
+      const log = await sellingLogService.update(logId, req.body, accountId);
+      res.json(log);
+    } catch (err) {
+      res.status(400).json({ error: (err as Error).message });
+    }
+  },
+);
+
+// Delete selling log
+router.delete(
+  '/:id',
+  requireRole('app_admin'),
+  async (req: Request, res: Response) => {
+    try {
+      const { accountId } = (req as AuthRequest).auth;
+      const logId = parseInt(req.params.id);
+      await sellingLogService.delete(logId, accountId);
+      res.status(204).send();
+    } catch (err) {
+      res.status(400).json({ error: (err as Error).message });
     }
   },
 );

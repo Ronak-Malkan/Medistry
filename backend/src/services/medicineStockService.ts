@@ -1,6 +1,8 @@
 import { medicineStockRepository } from '../repositories/medicineStockRepository';
 import { medicineRepository } from '../repositories/medicineRepository';
 import { logger } from '../utils/logger';
+import { LessThanOrEqual, MoreThan } from 'typeorm';
+import { Account } from '../entities/Account';
 
 export class MedicineStockService {
   private stockRepo = medicineStockRepository;
@@ -163,5 +165,44 @@ export class MedicineStockService {
       price: s.price,
       unitsPerPack: s.unitsPerPack,
     }));
+  }
+
+  async getLowStockCount(accountId: number): Promise<number> {
+    // Get account info to determine low stock threshold
+    const account = await this.stockRepo.manager.findOne(Account, {
+      where: { accountId },
+    });
+    const lowStockThreshold = account?.lowStockThreshold || 10;
+
+    const count = await this.stockRepo.count({
+      where: {
+        accountId,
+        quantityAvailable: LessThanOrEqual(lowStockThreshold),
+      },
+    });
+
+    return count;
+  }
+
+  async getExpiringSoonCount(accountId: number): Promise<number> {
+    // Get account info to determine expiry alert lead time
+    const account = await this.stockRepo.manager.findOne(Account, {
+      where: { accountId },
+    });
+    const expiryAlertLeadTime = account?.expiryAlertLeadTime || 30;
+
+    // Calculate the date threshold
+    const thresholdDate = new Date();
+    thresholdDate.setDate(thresholdDate.getDate() + expiryAlertLeadTime);
+
+    const count = await this.stockRepo.count({
+      where: {
+        accountId,
+        expiryDate: LessThanOrEqual(thresholdDate.toISOString().slice(0, 10)),
+        quantityAvailable: MoreThan(0), // Only count items that have stock
+      },
+    });
+
+    return count;
   }
 }

@@ -103,6 +103,21 @@ const billService = new BillService();
  *     responses:
  *       204:
  *         description: Deleted
+ * /api/bills/stats:
+ *   get:
+ *     summary: Get bill statistics
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Bill statistics
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 count:
+ *                   type: integer
  */
 // Create bill
 router.post(
@@ -135,6 +150,37 @@ router.get(
     try {
       const { accountId } = (req as AuthRequest).auth;
       const bills = await billService.findByAccount(accountId);
+      res.json({ bills });
+    } catch (err) {
+      res.status(500).json({ error: (err as Error).message });
+    }
+  },
+);
+
+// Get bill statistics
+router.get(
+  '/stats',
+  requireRole('app_admin'),
+  async (req: Request, res: Response) => {
+    try {
+      const { accountId } = (req as AuthRequest).auth;
+      const bills = await billService.findByAccount(accountId);
+      res.json({ count: bills.length });
+    } catch (err) {
+      res.status(500).json({ error: (err as Error).message });
+    }
+  },
+);
+
+// Search bills
+router.get(
+  '/search',
+  requireRole('app_admin'),
+  async (req: Request, res: Response) => {
+    try {
+      const { accountId } = (req as AuthRequest).auth;
+      const { q } = req.query;
+      const bills = await billService.search(String(q || ''), accountId);
       res.json(bills);
     } catch (err) {
       res.status(500).json({ error: (err as Error).message });

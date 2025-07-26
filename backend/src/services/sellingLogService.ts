@@ -2,6 +2,8 @@ import { sellingLogRepository } from '../repositories/sellingLogRepository';
 import { medicineStockRepository } from '../repositories/medicineStockRepository';
 import { SellingLog } from '../entities/SellingLog';
 import { Medicine } from '../entities/Medicine';
+import { MedicineStock } from '../entities/MedicineStock';
+import { AppDataSource } from '../data-source';
 
 interface FlexibleSellingData {
   medicineId?: number;
@@ -83,6 +85,114 @@ export class SellingLogService {
   }
 
   async findByAccount(accountId: number) {
-    return sellingLogRepository.find({ where: { account: { accountId } } });
+    return sellingLogRepository.find({
+      where: { account: { accountId } },
+      relations: ['medicine', 'bill'],
+    });
+  }
+
+  async findByBillId(billId: number, accountId: number) {
+    return sellingLogRepository.find({
+      where: {
+        bill: { bill_id: billId },
+        account: { accountId },
+      },
+      relations: ['medicine'],
+    });
+  }
+
+  async update(logId: number, data: Partial<SellingLog>, accountId: number) {
+    return await AppDataSource.transaction(async (manager) => {
+      // Find the existing log
+      const existingLog = await manager.findOne(SellingLog, {
+        where: {
+          selling_log_id: logId,
+          account: { accountId },
+        },
+        relations: ['medicine'],
+      });
+
+      if (!existingLog) {
+        throw new Error('Selling log not found');
+      }
+
+      // Find the stock entry
+      const stock = await manager.findOne(MedicineStock, {
+        where: {
+          medicineId: existingLog.medicine.medicineId,
+          batchNumber: existingLog.batch_number,
+          accountId,
+        },
+      });
+
+      if (!stock) {
+        throw new Error('Medicine stock not found');
+      }
+
+      // Calculate the difference in quantity
+      const oldQuantity = existingLog.quantity_sold;
+      const newQuantity = data.quantity_sold || oldQuantity;
+      const quantityDifference = newQuantity - oldQuantity;
+
+      // Update stock if quantity changed
+      if (quantityDifference !== 0) {
+        if (quantityDifference > 0) {
+          // Selling more - check if available
+          if (quantityDifference > stock.quantityAvailable) {
+            throw new Error('Cannot sell more than available');
+          }
+          stock.quantityAvailable -= quantityDifference;
+        } else {
+          // Selling less - add back to stock
+          stock.quantityAvailable += Math.abs(quantityDifference);
+        }
+        await manager.save(MedicineStock, stock);
+      }
+
+      // Update the log
+      const updatedLog = manager.merge(SellingLog, existingLog, {
+        quantity_sold: newQuantity,
+        unit_price_inclusive_gst:
+          data.unit_price_inclusive_gst || existingLog.unit_price_inclusive_gst,
+        discount_line: data.discount_line || existingLog.discount_line,
+      });
+
+      return await manager.save(SellingLog, updatedLog);
+    });
+  }
+
+  async delete(logId: number, accountId: number) {
+    return await AppDataSource.transaction(async (manager) => {
+      // Find the existing log
+      const existingLog = await manager.findOne(SellingLog, {
+        where: {
+          selling_log_id: logId,
+          account: { accountId },
+        },
+        relations: ['medicine'],
+      });
+
+      if (!existingLog) {
+        throw new Error('Selling log not found');
+      }
+
+      // Find the stock entry
+      const stock = await manager.findOne(MedicineStock, {
+        where: {
+          medicineId: existingLog.medicine.medicineId,
+          batchNumber: existingLog.batch_number,
+          accountId,
+        },
+      });
+
+      if (stock) {
+        // Add back the sold quantity to stock
+        stock.quantityAvailable += existingLog.quantity_sold;
+        await manager.save(MedicineStock, stock);
+      }
+
+      // Delete the log
+      await manager.delete(SellingLog, { selling_log_id: logId });
+    });
   }
 }

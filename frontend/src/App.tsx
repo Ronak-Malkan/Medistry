@@ -19,6 +19,10 @@ import SignUpPage from "./pages/SignUpPage";
 import ProtectedLayout from "./components/ProtectedLayout";
 import PurchaseInvoicePage from "./pages/PurchaseInvoicePage";
 import SalesInvoicePage from "./pages/SalesInvoicePage";
+import PurchaseInvoiceListPage from "./pages/PurchaseInvoiceListPage";
+import SalesInvoiceListPage from "./pages/SalesInvoiceListPage";
+import PurchaseInvoiceViewPage from "./pages/PurchaseInvoiceViewPage";
+import SalesInvoiceViewPage from "./pages/SalesInvoiceViewPage";
 
 function ProtectedRoute() {
   const { token, validateToken, loading } = useAuth();
@@ -201,7 +205,23 @@ export default function App() {
               path="/purchase-invoices"
               element={<PurchaseInvoicePage />}
             />
+            <Route
+              path="/purchase-invoices/list"
+              element={<PurchaseInvoiceListPage />}
+            />
+            <Route
+              path="/purchase-invoices/:id"
+              element={<PurchaseInvoiceViewPage />}
+            />
             <Route path="/sales-invoices" element={<SalesInvoicePage />} />
+            <Route
+              path="/sales-invoices/list"
+              element={<SalesInvoiceListPage />}
+            />
+            <Route
+              path="/sales-invoices/:id"
+              element={<SalesInvoiceViewPage />}
+            />
           </Route>
         </Route>
 
