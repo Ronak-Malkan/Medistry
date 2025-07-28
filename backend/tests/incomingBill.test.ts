@@ -241,8 +241,9 @@ describe('IncomingBill API', () => {
       .get('/api/incoming-bills')
       .set('Authorization', `Bearer ${token}`);
     expect(res.status).toBe(200);
-    expect(Array.isArray(res.body)).toBe(true);
-    expect(res.body.length).toBeGreaterThan(0);
+    expect(res.body).toHaveProperty('incomingBills');
+    expect(Array.isArray(res.body.incomingBills)).toBe(true);
+    expect(res.body.incomingBills.length).toBeGreaterThan(0);
   });
 
   it('should get an incoming bill by id', async () => {

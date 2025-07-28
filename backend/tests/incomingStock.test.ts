@@ -160,7 +160,8 @@ describe('IncomingStock API', () => {
       .get('/api/incoming-stocks')
       .set('Authorization', `Bearer ${token}`);
     expect(res.status).toBe(200);
-    expect(Array.isArray(res.body)).toBe(true);
+    expect(res.body).toHaveProperty('incomingStocks');
+    expect(Array.isArray(res.body.incomingStocks)).toBe(true);
   });
 
   it('should fail without auth', async () => {

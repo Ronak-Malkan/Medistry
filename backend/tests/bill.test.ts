@@ -342,7 +342,9 @@ describe('Bill API', () => {
       .get('/api/bills')
       .set('Authorization', `Bearer ${token}`);
     expect(res.status).toBe(200);
-    expect(Array.isArray(res.body)).toBe(true);
+    expect(res.body).toHaveProperty('bills');
+    expect(Array.isArray(res.body.bills)).toBe(true);
+    expect(res.body.bills.length).toBeGreaterThan(0);
   });
 
   it('should get a bill by id', async () => {

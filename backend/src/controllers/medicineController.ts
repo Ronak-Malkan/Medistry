@@ -3,6 +3,10 @@ import { requireRole } from '../middleware/auth';
 import { MedicineService } from '../services/medicineService';
 import { MedicineStockService } from '../services/medicineStockService';
 
+interface AuthRequest extends Request {
+  auth: { accountId: number; role: string; userId: number };
+}
+
 const router = Router();
 const service = new MedicineService();
 const stockService = new MedicineStockService();
@@ -292,7 +296,7 @@ router.get(
   requireRole('app_admin'),
   async (req: Request, res: Response) => {
     try {
-      const { accountId } = (req as any).auth;
+      const { accountId } = (req as AuthRequest).auth;
       const lowStockCount = await stockService.getLowStockCount(accountId);
       res.json({ count: lowStockCount });
     } catch (e) {
@@ -307,7 +311,7 @@ router.get(
   requireRole('app_admin'),
   async (req: Request, res: Response) => {
     try {
-      const { accountId } = (req as any).auth;
+      const { accountId } = (req as AuthRequest).auth;
       const expiringCount = await stockService.getExpiringSoonCount(accountId);
       res.json({ count: expiringCount });
     } catch (e) {

@@ -155,7 +155,7 @@ export class IncomingBillService {
       });
 
       if (!bill) {
-        throw new Error('Incoming bill not found');
+        return { affected: 0 };
       }
 
       // 2. Get all incoming stocks for this bill
